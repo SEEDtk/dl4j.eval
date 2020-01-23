@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.TextStringBuilder;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
@@ -17,18 +20,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
 import org.theseed.dl4j.train.ClassTrainingProcessor;
+import org.theseed.dl4j.train.RunStats;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.utils.ICommand;
 import org.theseed.utils.Parms;
 
 /**
- * This object trains classifiers for genome annotation consistency evaluation.  The input file has role IDs along the top and a genome ID in the first column.
- * A full pass is made through the file to get a list of the roles and the counts found for each.  A model is then trained for every role.  These models can
- * be used to create a consistency profile for new genomes.
+ * This object trains classifiers for genome annotation consistency evaluation.  The input file has role IDs along the top and a genome ID
+ * in the first column.  A full pass is made through the file to get a list of the roles and the counts found for each.  A model is then
+ * trained for every role.  These models can be used to create a consistency profile for new genomes.
  *
- * The models are trained by org.dlj4j.run.ClassTrainingProcessor.  The positional parameters are the name of the parameter file, the name of the model directory,
- * and the size of the testing set.  The parameter file should not contain the --testSize, --col, --name, --input, --trials, --meta,
- * or --comment parameters, as these will be added by this method.  The training set must be in a file named "training.tbl" in the model directory.
+ * The models are trained by org.dlj4j.run.ClassTrainingProcessor.  The positional parameters are the name of the parameter file, the name
+ * of the model directory, and the size of the testing set.  The parameter file should not contain the --testSize, --col, --name, --input,
+ * --meta, or --comment parameters, as these will be added by this method.  The training set must be in a file named "training.tbl" in the
+ * model directory.
  *
  * @author Bruce Parrello
  *
@@ -48,6 +53,8 @@ public class TrainProcessor implements ICommand {
     File trainingFile;
     /** array of training file labels */
     String[] labels;
+    /** array of accuracy scores */
+    double[] ratings;
     /** label file */
     File labelFile;
 
@@ -139,6 +146,8 @@ public class TrainProcessor implements ICommand {
                 }
             }
             log.info("{} roles found for processing.", this.roleMap.size());
+            // Allocate the accuracy array.
+            this.ratings = new double[this.labels.length];
             // Create the training processor.
             ClassTrainingProcessor processor = new ClassTrainingProcessor();
             // Now loop through the roles, creating the models.
@@ -154,8 +163,6 @@ public class TrainProcessor implements ICommand {
                 // Create the model and trial file names.
                 theseParms.add("--name");
                 theseParms.add(role + ".ser");
-                theseParms.add("--trials");
-                theseParms.add(role + ".log");
                 // Add the comment.
                 theseParms.add("--comment");
                 theseParms.add(String.format("Role %d: %s, maximum count %d", i, role, maxLabel));
@@ -173,11 +180,36 @@ public class TrainProcessor implements ICommand {
                 boolean ok = processor.parseCommand(argBuffer);
                 if (ok) {
                     processor.run();
+                    ratings[i] = processor.getRating();
                 } else {
                     throw new RuntimeException("Error processing role.");
                 }
             }
-
+            // Now log all the scores.
+            String boundary = StringUtils.repeat('=', 33);
+            // We will build the report in here.
+            TextStringBuilder buffer = new TextStringBuilder(33 * (this.labels.length + 4));
+            buffer.appendNewLine();
+            buffer.appendln(boundary);
+            // Write out the heading line.
+            buffer.appendln(String.format("%-21s %11s", "Role", "Score"));
+            // Write out a space.
+            buffer.appendln("");
+            // Write out the data lines.
+            for (int i = 1; i < this.labels.length; i++) {
+                buffer.appendln(String.format("%-21s %11.4f", this.labels[i], this.ratings[i]));
+            }
+            // Write out a trailer line.
+            buffer.appendln(boundary);
+            // Write it to the output log.
+            String report = buffer.toString();
+            log.info(report);
+            // Write it to the trial file.
+            try {
+                RunStats.writeTrialReport(processor.getTrialFile(), "Summary of Model Ratings", report);
+            } catch (IOException e) {
+                System.err.println("Error writing trial log:" + e.getMessage());
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
