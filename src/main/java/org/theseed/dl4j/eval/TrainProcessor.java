@@ -35,6 +35,10 @@ import org.theseed.utils.Parms;
  * --meta, or --comment parameters, as these will be added by this method.  The training set must be in a file named "training.tbl" in the
  * model directory.
  *
+ * The following command-line options are supported.
+ *
+ * -m	minimum acceptable accuracy for a model to be output; the default is 0.95
+ *
  * @author Bruce Parrello
  *
  */
@@ -64,6 +68,10 @@ public class TrainProcessor implements ICommand {
     @Option(name="-h", aliases={"--help"}, help=true)
     private boolean help;
 
+    /** minimum accuracy */
+    @Option(name = "--min", aliases = { "-m" }, metaVar = "0.93", usage = "minimum acceptable accuracy")
+    private double minAcc;
+
     /** model directory */
     @Argument(index = 0, metaVar = "modelDir", usage = "model directory", required = true)
     private File modelDir;
@@ -75,6 +83,8 @@ public class TrainProcessor implements ICommand {
     /** testing set size */
     @Argument(index = 2, metaVar = "120", usage = "testing set size", required = true)
     private int testSize;
+
+    /** minimum acceptable accuracy */
 
 
     /**
@@ -88,6 +98,7 @@ public class TrainProcessor implements ICommand {
         boolean retVal = false;
         // Set the defaults.
         this.help = false;
+        this.minAcc = 0.95;
         // Parse the command line.
         CmdLineParser parser = new CmdLineParser(this);
         try {
@@ -150,6 +161,8 @@ public class TrainProcessor implements ICommand {
             this.ratings = new double[this.labels.length];
             // Create the training processor.
             ClassTrainingProcessor processor = new ClassTrainingProcessor();
+            // Suppress saving the model.  We will do that later if we like it.
+            processor.setSearchMode();
             // Now loop through the roles, creating the models.
             for (int i = 1; i < this.labels.length; i++) {
                 // Start with a copy of the argument list.
@@ -181,12 +194,15 @@ public class TrainProcessor implements ICommand {
                 if (ok) {
                     processor.run();
                     ratings[i] = processor.getRating();
+                    if (ratings[i] >= this.minAcc) {
+                        processor.saveModelForced();
+                    }
                 } else {
                     throw new RuntimeException("Error processing role.");
                 }
             }
             // Now log all the scores.
-            String boundary = StringUtils.repeat('=', 33);
+            String boundary = StringUtils.repeat('=', 34);
             // We will build the report in here.
             TextStringBuilder buffer = new TextStringBuilder(33 * (this.labels.length + 4));
             buffer.appendNewLine();
@@ -197,7 +213,8 @@ public class TrainProcessor implements ICommand {
             buffer.appendln("");
             // Write out the data lines.
             for (int i = 1; i < this.labels.length; i++) {
-                buffer.appendln(String.format("%-21s %11.4f", this.labels[i], this.ratings[i]));
+                char flag = (this.ratings[i] < this.minAcc ? '*' : ' ');
+                buffer.appendln(String.format("%-21s %11.4f%c", this.labels[i], this.ratings[i], flag));
             }
             // Write out a trailer line.
             buffer.appendln(boundary);
