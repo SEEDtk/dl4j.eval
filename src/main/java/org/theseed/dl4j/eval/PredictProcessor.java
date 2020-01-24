@@ -216,10 +216,10 @@ public class PredictProcessor implements ICommand {
                         for (int g = 0; g < this.nGenomes; g++) {
                             String genome = this.genomes[g];
                             File outFile = new File(this.outDir, genome + ".out");
-                            log.info("Writing {}.", outFile.getPath());
                             PrintWriter genomeStream = null;
                             try {
                                 if (! this.terse) {
+                                    log.info("Writing {}.", outFile.getPath());
                                     genomeStream = new PrintWriter(outFile);
                                     genomeStream.println("Role\tactual\tpredicted");
                                 }
