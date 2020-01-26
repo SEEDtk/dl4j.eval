@@ -5,7 +5,7 @@ import java.util.Arrays;
 import org.theseed.utils.ICommand;
 
 /**
- * Hello world!
+ * DL4J-based genome evaluation
  *
  */
 public class App
@@ -21,11 +21,11 @@ public class App
         case "train" :
             processor = new TrainProcessor();
             break;
-        case "predict" :
-            processor = new PredictProcessor();
+        case "eval" :
+            processor = new EvalProcessor();
             break;
         default :
-            throw new RuntimeException("Invalid command " + command + ": must be \"train\" or \"predict\".");
+            throw new RuntimeException("Invalid command " + command + ": must be \"train\" or \"eval\".");
         }
         boolean ok = processor.parseCommand(newArgs);
         if (ok) {
