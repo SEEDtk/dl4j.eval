@@ -13,6 +13,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
+import org.theseed.proteins.RoleMap;
+
+import com.github.cliftonlabs.json_simple.JsonArray;
+import com.github.cliftonlabs.json_simple.JsonObject;
 
 /**
  * This is a simple utility class that is used to contain quality statistics for a genome.
@@ -424,6 +428,59 @@ public class GenomeStats {
      */
     public double getScore() {
         return getFinePercent() * 1.09 + getCompletePercent() - 5 * getContaminationPercent() + (100 - getHypotheticalPercent()) - getContigCount() / 100.0;
+    }
+
+    /**
+     * Store this quality information in the specified GTO.
+     *
+     * @param gto		JSON object into which the quality information should be stored
+     * @param roles		role definition table
+     */
+    public void store(JsonObject gto, RoleMap roles) {
+        // Insure there is a quality member in the GTO and get access to it.
+        JsonObject quality = (JsonObject) gto.get("quality");
+        if (quality == null) {
+            quality = new JsonObject();
+            gto.put("quality", quality);
+        }
+        quality.put("genome_length", this.dnaSize);
+        quality.put("contigs", this.contigCount);
+        quality.put("plfam_cds_ration", this.getPlfamPercent());
+        quality.put("coarse_consistency", this.getCoarsePercent());
+        quality.put("contamination", this.getContaminationPercent());
+        quality.put("hypothetical_cds_ratio", this.getHypotheticalPercent());
+        quality.put("completeness", this.getCompletePercent());
+        quality.put("cds_ratio", this.getCdsPercent());
+        quality.put("fine_consistency", this.getFinePercent());
+        quality.put("completeness_group", this.getGroup());
+        // Genome metrics is a hash.
+        JsonObject metrics = new JsonObject().putChain("N50", this.getN50()).putChain("L50", this.getL50()).putChain("totlen", this.dnaSize);
+        quality.put("genome_metrics", metrics);
+        // Finally, the problematic roles report.  We create two lists in parallel, one for consistency and one for completeness.
+        // We also need to count the overs and unders, and we need to save the role definitions.
+        JsonObject pprComplete = new JsonObject();
+        JsonObject pprConsistent = new JsonObject();
+        JsonObject roleMap = new JsonObject();
+        int over = 0;
+        int under = 0;
+        for (String role : this.getProblematicRoles()) {
+            ProblematicRole ppr = this.getReport(role);
+            JsonObject target = (ppr.universal ? pprComplete : pprConsistent);
+            JsonArray comparison = new JsonArray().addChain(ppr.predicted).addChain(ppr.actual);
+            target.put(role, comparison);
+            roleMap.put(role, roles.getName(role));
+            if (ppr.actual > ppr.predicted)
+                over++;
+            else
+                under++;
+        }
+        JsonObject problematicRoles = new JsonObject().putChain("consistency_roles", pprConsistent)
+                .putChain("completeness_roles", pprComplete).putChain("role_map", roleMap);
+        problematicRoles.put("consistency_checked", this.consistentCount);
+        problematicRoles.put("completeness_checked", this.completeCount);
+        problematicRoles.put("over_present", over);
+        problematicRoles.put("under_present", under);
+        quality.put("problematic_roles_report", problematicRoles);
     }
 
 

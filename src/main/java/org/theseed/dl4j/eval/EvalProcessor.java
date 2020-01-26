@@ -35,8 +35,6 @@ import org.theseed.utils.ICommand;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
 
-import com.github.cliftonlabs.json_simple.JsonObject;
-
 
 /**
  * This processor performs the evaluations.  It will take as input an evaluation directory and an input directory of
@@ -86,10 +84,8 @@ public class EvalProcessor implements ICommand {
     private ArrayList<String> roles;
     /** array of genome statistics objects */
     private GenomeStats[] reports;
-    /** in update mode, these are the saved GTOs */
-    private JsonObject[] gtos;
-    /** in update mode, these are the genome file names */
-    private File[] gFiles;
+    /** in update mode, these are the saved Genomes so we can update */
+    private Genome[] gtos;
     /** number of genomes read in this batch */
     private int nGenomes;
     /** output matrix, first index is genome, second is role */
@@ -215,8 +211,7 @@ public class EvalProcessor implements ICommand {
                 log.info("{} genomes found in directory.", this.nGenomes);
                 this.rolesActual = new int[this.nGenomes][this.roles.size()];
                 this.reports = new GenomeStats[this.nGenomes];
-                this.gtos = new JsonObject[this.nGenomes];
-                this.gFiles = new File[this.nGenomes];
+                this.gtos = new Genome[this.nGenomes];
                 // Loop through the genomes.  Note we track the genome's index in genomeStats;
                 int iGenome = 0;
                 for (Genome genome : genomeDir) {
@@ -234,8 +229,7 @@ public class EvalProcessor implements ICommand {
                 this.nGenomes = 1;
                 this.rolesActual = new int[1][this.roles.size()];
                 this.reports = new GenomeStats[1];
-                this.gtos = new JsonObject[1];
-                this.gFiles = new File[1];
+                this.gtos = new Genome[1];
                 // Read in the genome and process it.
                 log.info("Reading genome from {}.", this.inDir.getPath());
                 Genome genome = new Genome(this.inDir);
@@ -317,8 +311,7 @@ public class EvalProcessor implements ICommand {
         }
         // Save the GTO information if we're updating.
         if (this.update) {
-            this.gtos[iGenome] = genome.getJson();
-            this.gFiles[iGenome] = genome.getFile();
+            this.gtos[iGenome] = genome;
         }
     }
 
@@ -373,9 +366,9 @@ public class EvalProcessor implements ICommand {
     }
 
     /**
-     * @throws FileNotFoundException
+     * @throws IOException
      */
-    protected void writeOutput() throws FileNotFoundException {
+    protected void writeOutput() throws IOException {
         // Write the summary file and the output files.
         try (PrintWriter outStream = new PrintWriter(new File(this.outDir, "summary.tbl"))) {
             log.info("Writing output for {} genomes.", this.nGenomes);
@@ -423,6 +416,12 @@ public class EvalProcessor implements ICommand {
                 }
                 outStream.format("%s\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8d\t%-8s\t%8.2f%n",
                         genome, coarsePct, finePct, completePct, contamPct, hypoPct, contigs, goodSeed, score);
+                if (this.update) {
+                    log.trace("Updating GTO for {}.", genome);
+                    Genome gObject = this.gtos[g];
+                    gReport.store(gObject.getJson(), this.roleDefinitions);
+                    gObject.update(gObject.getFile());
+                }
             }
         }
     }
