@@ -3,11 +3,14 @@
  */
 package org.theseed.dl4j.eval;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.UUID;
 
 import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Contig;
@@ -30,6 +33,8 @@ public class GenomeStats {
 
     /** genome ID */
     private String id;
+    /** genome name */
+    private String name;
     /** completeness group */
     private String group;
     /** number of extra role occurrences for completeness */
@@ -116,10 +121,13 @@ public class GenomeStats {
     }
     /** Construct an empty genome stats object.
      *
-     * @param id	ID of the genome
+     * @param id		ID of the genome
+     * @param domain	domain of the genome (Bacteria or Archaea)
+     * @param name		name of the genome
      */
-    public GenomeStats(String id, String domain) {
+    public GenomeStats(String id, String domain, String name) {
         this.id = id;
+        this.name = name;
         this.group = null;
         this.contaminationCount = 0;
         this.missingCount = 0;
@@ -145,6 +153,13 @@ public class GenomeStats {
      */
     public String getId() {
         return id;
+    }
+
+    /**
+     * @return the genome name
+     */
+    public String getName() {
+        return name;
     }
 
     /**
@@ -437,6 +452,19 @@ public class GenomeStats {
      * @param roles		role definition table
      */
     public void store(JsonObject gto, RoleMap roles) {
+        // Record this as an analysis event.
+        JsonArray events = (JsonArray) gto.get("analysis_events");
+        if (events == null) {
+            events = new JsonArray();
+            gto.put("analysis_events", events);
+        }
+        JsonObject thisEvent = new JsonObject().putChain("id", UUID.randomUUID().toString())
+                .putChain("tool_name", "org.theseed.dl4j.eval")
+                .putChain("execute_time", System.currentTimeMillis() / 1000.0);
+        try {
+            thisEvent.put("hostname", InetAddress.getLocalHost().getCanonicalHostName());
+        } catch (UnknownHostException e) { }
+        events.add(thisEvent);
         // Insure there is a quality member in the GTO and get access to it.
         JsonObject quality = (JsonObject) gto.get("quality");
         if (quality == null) {
@@ -445,7 +473,7 @@ public class GenomeStats {
         }
         quality.put("genome_length", this.dnaSize);
         quality.put("contigs", this.contigCount);
-        quality.put("plfam_cds_ration", this.getPlfamPercent());
+        quality.put("plfam_cds_ratio", this.getPlfamPercent());
         quality.put("coarse_consistency", this.getCoarsePercent());
         quality.put("contamination", this.getContaminationPercent());
         quality.put("hypothetical_cds_ratio", this.getHypotheticalPercent());

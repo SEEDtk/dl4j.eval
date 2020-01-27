@@ -24,8 +24,11 @@ public class App
         case "eval" :
             processor = new EvalProcessor();
             break;
+        case "p3eval" :
+            processor = new P3EvalProcessor();
+            break;
         default :
-            throw new RuntimeException("Invalid command " + command + ": must be \"train\" or \"eval\".");
+            throw new RuntimeException("Invalid command " + command + ": must be \"train\", \"p3eval\", or \"eval\".");
         }
         boolean ok = processor.parseCommand(newArgs);
         if (ok) {

@@ -47,7 +47,7 @@ public class AppTest extends TestCase
      * @throws NumberFormatException
      */
     public void testGenomeStats() throws NumberFormatException, IOException {
-        GenomeStats testGenome = new GenomeStats("100226.11", "Bacteria");
+        GenomeStats testGenome = new GenomeStats("100226.11", "Bacteria", "Streptomyces coelicolor clonal population");
         testGenome.setGroup("root");
         testGenome.completeRole("RoleG", 0);
         testGenome.completeRole("RoleH", 0);
@@ -68,6 +68,7 @@ public class AppTest extends TestCase
         testGenome.consistentRole("RoleI", 0, 1);
         testGenome.consistentRole("RoleJ", 0, 1);
         assertThat(testGenome.getId(), equalTo("100226.11"));
+        assertThat(testGenome.getName(), equalTo("Streptomyces coelicolor clonal population"));
         assertThat(testGenome.getGroup(), equalTo("root"));
         assertThat(testGenome.getCoarsePercent(), equalTo(60.0));
         assertThat(testGenome.getFinePercent(), equalTo(40.0));
@@ -105,13 +106,13 @@ public class AppTest extends TestCase
         testGenome.countSeed(p2);
         assertFalse(testGenome.isGoodSeed());
         assertThat(testGenome.getSeed(), equalTo(p2));
-        testGenome = new GenomeStats("83333.1", "Bacteria");
+        testGenome = new GenomeStats("83333.1", "Bacteria", "Escherichia coli K12");
         testGenome.countSeed(p2);
         assertTrue(testGenome.isGoodSeed());
-        testGenome = new GenomeStats("83333.1", "Bacteria");
+        testGenome = new GenomeStats("83333.1", "Bacteria", "Escherichia coli K12");
         testGenome.countSeed(StringUtils.repeat('X', 500));
         assertFalse(testGenome.isGoodSeed());
-        testGenome = new GenomeStats("1100226.1", "Archaea");
+        testGenome = new GenomeStats("1100226.1", "Archaea", "unclassified archaeon");
         assertFalse(testGenome.isGoodSeed());
         testGenome.countSeed(p1);
         assertFalse(testGenome.isGoodSeed());
@@ -122,15 +123,15 @@ public class AppTest extends TestCase
         testGenome.countSeed(p2);
         assertFalse(testGenome.isGoodSeed());
         assertThat(testGenome.getSeed(), equalTo(p2));
-        testGenome = new GenomeStats("83333.1", "Archaea");
+        testGenome = new GenomeStats("83333.1", "Archaea", "Archaeochia coli");
         testGenome.countSeed(p2);
         assertTrue(testGenome.isGoodSeed());
-        testGenome = new GenomeStats("83333.1", "Archaea");
+        testGenome = new GenomeStats("83333.1", "Archaea", "Archaeochia coli");
         testGenome.countSeed(StringUtils.repeat('X', 500));
         assertTrue(testGenome.isGoodSeed());
         // Test peg counting.
         Genome myGenome = new Genome(new File("src/test", "test.gto"));
-        testGenome = new GenomeStats(myGenome.getId(), myGenome.getDomain());
+        testGenome = new GenomeStats(myGenome.getId(), myGenome.getDomain(), myGenome.getName());
         for (Feature peg : myGenome.getPegs())
             testGenome.countPeg(peg);
         testGenome.computeMetrics(myGenome);
