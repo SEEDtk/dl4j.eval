@@ -49,12 +49,12 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     private Map<String,String> closeFeatureMap;
     /** reference genome ID override */
     private String refGenomeOverride;
+    /** protein sensitivity */
+    private double maxProtDist;
 
     /** maximum acceptable distance for a reference genome */
     private static final double MAX_GENOME_DIST = 0.8;
 
-    /** maximum acceptable distance for a close protein */
-    private static final double MAX_PROTEIN_DIST = 0.9;
 
     /**
      * Construct a deep HTML reporting object.
@@ -64,6 +64,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     public EvalDeepReporter(File outDir) {
         super(outDir);
         this.refGenomeOverride = null;
+        this.maxProtDist = MAX_GENOME_DIST;
     }
 
     /**
@@ -133,7 +134,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
                 if (roleFeatures != null) {
                     // Find the closest feature.
                     KmerCollectionGroup.Result match = roleFeatures.getBest(feat.getProteinTranslation());
-                    if (match.getDistance() <= MAX_PROTEIN_DIST) {
+                    if (match.getDistance() <= maxProtDist) {
                         // We found one.  Save it and upgrade the status.
                         this.closeFeatureMap.put(feat.getId(), match.getGroup());
                         retVal = FeatureStatus.GOOD;
@@ -208,6 +209,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
             // Here we need to compute a reference. Get the seed protein.
             String seedProt = gReport.getSeed();
             // Find the closest genome in the reference genome database.
+            log.info("Computing reference genome for {}: {}", gReport.getId(), gReport.getName());
             KmerCollectionGroup.Result refGenomeData = this.referenceGenomes.getBest(seedProt);
             this.refGenomeDistance = refGenomeData.getDistance();
             this.refGenomeId = refGenomeData.getGroup();
@@ -290,4 +292,12 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     }
 
 
+    /**
+     * Set the maximum protein distance for the protein comparisons.
+     *
+     * @param newDistance	new maximum distance
+     */
+    public void setSensitivity(double newDistance) {
+        this.maxProtDist = newDistance;
+    }
 }

@@ -2,7 +2,7 @@
 <configuration>
 
     <appender name="STDLOG" class="ch.qos.logback.core.ConsoleAppender">
-        <target>System.out</target>
+        <target>System.err</target>
         <encoder>
             <pattern>%date [%thread] %msg%n</pattern>
         </encoder>

@@ -104,13 +104,17 @@ public class Evaluator {
     @Option(name = "--ref", usage = "reference genome for deep evaluation reports")
     private String refGenomeId;
 
+    /** sensitivity of protein comparison on reports */
+    @Option(name = "-s", aliases = { "--sensitivity" }, metaVar = "0.9", usage = "maximum distance for a close protein")
+    private double sensitivity;
+
+    /** output directory */
+    @Option(name = "-O", aliases = { "--outDir" }, metaVar = "outDir", usage = "output directory")
+    private File outDir;
+
     /** model directory */
     @Argument(index = 0, metaVar = "modelDir", usage = "model directory", required = true)
     private File modelDir;
-
-    /** output directory */
-    @Option(name = "-o", aliases = { "--outDir", "--output" }, metaVar = "outDir", usage = "output directory")
-    private File outDir;
 
     /**
      * Construct an evaluator.
@@ -123,6 +127,7 @@ public class Evaluator {
         this.clearOutDir = false;
         this.outDir = new File(System.getProperty("user.dir"));
         this.format = EvalReporter.Type.TEXT;
+        this.sensitivity = 0.8;
     }
 
     /**
@@ -167,9 +172,17 @@ public class Evaluator {
             // Check for terse mode.
             if (this.terse)
                 this.reporter.setOption(EvalReporter.Option.NODETAILS);
-            // Save the reference genome override if we are doing a deep report.
-            if (this.refGenomeId != null && this.reporter instanceof EvalDeepReporter)
-                ((EvalDeepReporter) this.reporter).setRefGenomeOverride(this.refGenomeId);
+            // Here we tune the deep report.
+            if (this.reporter instanceof EvalDeepReporter) {
+                EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
+                if (this.refGenomeId != null)
+                    deepReporter.setRefGenomeOverride(this.refGenomeId);
+                if (this.sensitivity < 0 || this.sensitivity >= 1.0) {
+                    throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
+                } else {
+                    deepReporter.setSensitivity(this.sensitivity);
+                }
+            }
             retVal = true;
         }
         return retVal;

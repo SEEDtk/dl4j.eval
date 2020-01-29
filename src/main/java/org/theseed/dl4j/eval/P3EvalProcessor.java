@@ -30,12 +30,15 @@ import org.theseed.utils.ICommand;
  * The command-line options are as follows.
  *
  * -v	show more detailed progress messages
- * -o	the name of the output directory (defaults to the current directory)
+ * -O	the name of the output directory (defaults to the current directory)
  * -c	name or index (1-based) of the input column containing the genome ID, the default is column 1
  * -b	number of genomes to process in each batch
  * -i	name of the input file; if omitted, the standard input is assumed
+ * -s	maximum distance for a close protein in deep reporting (0 to 1)
  *
  * --terse		do not write the individual output files, only the summary
+ * --clear		clear the output directory before processing
+ * --ref		ID of a reference genome to use for all the evaluation reports
  *
  * @author Bruce Parrello
  *

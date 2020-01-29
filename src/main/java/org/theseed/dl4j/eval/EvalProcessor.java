@@ -23,31 +23,27 @@ import org.theseed.utils.ICommand;
  *
  * The positional parameters are the name of the evaluation directory and the name of the input directory.
  *
- * The input directory should contain a GTO file for each genome to evaluate.  Alternative, the second parameter can be the
- * name of an input GTO file, and then only that single file will be processed.
+ * The input directory should contain a GTO file for each genome to evaluate.
  *
- * When we are done, the output directory will contain a I<genomeID><code>.tsv</code> file for each genome.  This file will
- * contain the quality numbers plus the predicted and actual counts for each role.  In addition, a
- * summary of the results will be placed in "summary.tsv" in the same directory.
+ * When we are done, the output directory will contain a report file for each genome (named using the genome
+ * ID) and a summary report (named "summary").  The file type depends on the type of reporting requested.
  *
  * The command-line options are as follows.
  *
  * -v	show more detailed progress messages
- * -o	the name of the output directory (defaults to the current directory)
+ * -O	the name of the output directory (defaults to the current directory)
+ * -s	maximum distance for a close protein in deep reporting (0 to 1)
  *
  * --terse		do not write the individual output files, only the summary
  * --update		store the quality information in the GTO and write it to the output directory
  * --format		specify the output format-- HTML, DEEP, or TEXT
  * --ref		ID of a reference genome to use for all the evaluation reports
+ * --clear		clear the output directory before processing
  *
  * @author Bruce Parrello
  *
  */
 public class EvalProcessor extends Evaluator implements ICommand {
-
-    /** TRUE for single-gto mode */
-    private boolean singleton;
-
 
     // COMMAND LINE
 
@@ -79,11 +75,7 @@ public class EvalProcessor extends Evaluator implements ICommand {
             } else if (this.validateParms()) {
                 // Check the input directory.
                 if (! this.inDir.isDirectory()) {
-                    if (this.inDir.canRead()) {
-                        this.singleton = true;
-                    } else {
-                        throw new FileNotFoundException("Input " + this.inDir + " is neither a directory or a readable file.");
-                    }
+                    throw new FileNotFoundException("Input " + this.inDir + " is neither a directory or a readable file.");
                 }
                // Denote we're ready to run.
                 retVal = true;
@@ -103,26 +95,16 @@ public class EvalProcessor extends Evaluator implements ICommand {
         try {
             // Read in the role maps.
             initializeData();
-            // Are we doing one genome or many?
-            if (! this.singleton) {
-                log.info("Genomes will be read from {}.", this.inDir);
-                GenomeDirectory genomeDir = new GenomeDirectory(this.inDir);
-                // We know the number of genomes, so we can allocate our arrays.
-                this.allocateArrays(genomeDir.size());
-                // Loop through the genomes.  Note we track the genome's index in genomeStats;
-                int iGenome = 0;
-                for (Genome genome : genomeDir) {
-                    processGenome(iGenome, genome);
-                    // Prepare for the next genome.
-                    iGenome++;
-                }
-            } else {
-                // Here we are processing only one genome.
-                this.allocateArrays(1);
-                // Read in the genome and process it.
-                log.info("Reading genome from {}.", this.inDir);
-                Genome genome = new Genome(this.inDir);
-                processGenome(0, genome);
+            log.info("Genomes will be read from {}.", this.inDir);
+            GenomeDirectory genomeDir = new GenomeDirectory(this.inDir);
+            // We know the number of genomes, so we can allocate our arrays.
+            this.allocateArrays(genomeDir.size());
+            // Loop through the genomes.  Note we track the genome's index in genomeStats;
+            int iGenome = 0;
+            for (Genome genome : genomeDir) {
+                processGenome(iGenome, genome);
+                // Prepare for the next genome.
+                iGenome++;
             }
             // Evaluate the consistency of the genomes.
             evaluateConsistency();

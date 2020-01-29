@@ -100,7 +100,7 @@ public class EvalHtmlReporter extends EvalReporter {
 
     private static final String FEATURE_VIEW_LINK = "https://www.patricbrc.org/view/Feature/%s";
 
-    private static final String FEATURE_LIST_LINK = "https://www.patricbrc.org/view/FeatureList/?in(patric_id,(%s))";
+    private static final String FEATURE_LIST_LINK = "https://www.patricbrc.org/view/FeatureList/?in(patric_id,(\"%s\"))";
 
      // FIELDS
 
@@ -182,7 +182,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param genome_id		ID of the target genome
      */
     protected DomContent genomeLink(String genome_id) {
-        return a(genome_id).withHref(String.format(GENOME_LINK_FMT, genome_id));
+        return a(genome_id).withHref(String.format(GENOME_LINK_FMT, genome_id)).withTarget("_blank");
     }
 
     /**
@@ -602,11 +602,13 @@ public class EvalHtmlReporter extends EvalReporter {
             String fid = fidList.iterator().next();
             retVal = featureLink(fid);
         } else {
-            // Multiple features.  We go to a feature list view.
-            String linkUrl = String.format(FEATURE_LIST_LINK, StringUtils.join(fidList, ','));
-                    StringUtils.join(fidList, ',');
+            // Multiple features.  We go to a feature list view.  This requires the feature IDs to be enclosed in quotes.
+            String rawUrl = String.format(FEATURE_LIST_LINK, StringUtils.join(fidList, "\",\""));
+            // We also have to URLEncode the vertical bars.
+            String linkUrl = StringUtils.replace(rawUrl, "|", "%7c");
+            // Apply the URL to the text.
             String linkText = String.format("%d features", fidList.size());
-            retVal = a(linkText).withHref(linkUrl);
+            retVal = a(linkText).withHref(linkUrl).withTarget("_blank");
         }
         return retVal;
     }
@@ -618,7 +620,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @return a hyperlink to the feature's view page
      */
     protected DomContent featureLink(String fid) {
-        return a(fid).withHref(String.format(FEATURE_VIEW_LINK, fid));
+        return a(fid).withHref(String.format(FEATURE_VIEW_LINK, fid)).withTarget("_blank");
     }
 
 }
