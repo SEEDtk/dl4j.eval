@@ -136,6 +136,96 @@ public class GenomeStats {
     }
 
     /**
+     * Return structure for feature counts.
+     */
+    public class Counts {
+
+        private int fidCount;
+        private int pegCount;
+        private int hypoCount;
+        private int usefulCount;
+        private int knownCount;
+
+        /**
+         * Compute the feature counts for a genome.
+         *
+         * @param genome			the genome of interest
+         * @param roleDefinitions	role definition map
+         */
+        public Counts(Genome genome, RoleMap roleDefinitions) {
+            this.fidCount = 0;
+            this.pegCount = 0;
+            this.hypoCount = 0;
+            this.usefulCount = 0;
+            this.knownCount = 0;
+            // Run through all the features of the genome, counting.
+            for (Feature feat : genome.getFeatures()) {
+                this.fidCount++;
+                if (feat.isCDS()) {
+                    this.pegCount++;
+                    if (GenomeStats.isHypothetical(feat.getFunction())) {
+                        this.hypoCount++;
+                    } else {
+                        // We are not hypothetical, so determine if one of our roles
+                        // is known, and if one of them is useful with respect to this
+                        // object's validation.
+                        boolean useful = false;
+                        boolean known = false;
+                        for (Role role : feat.getUsefulRoles(roleDefinitions)) {
+                            known = true;
+                            if (GenomeStats.this.isUseful(role.getId())) {
+                                useful = true;
+                            }
+                        }
+                        // Do the last two counts.
+                        if (useful) this.usefulCount++;
+                        if (known) this.knownCount++;
+                    }
+                }
+            }
+        }
+
+        /**
+         * @return the number of features
+         */
+        public int getFidCount() {
+            return fidCount;
+        }
+
+        /**
+         * @return the number of protein features
+         */
+        public int getPegCount() {
+            return pegCount;
+        }
+
+        /**
+         * @return the number of hypothetical proteins
+         */
+        public int getHypoCount() {
+            return hypoCount;
+        }
+
+        /**
+         * @return the number of proteins with roles useful in evaluation
+         */
+        public int getUsefulCount() {
+            return usefulCount;
+        }
+
+        /**
+         * @return the number of proteins with roles used in subsystems
+         */
+        public int getKnownCount() {
+            return knownCount;
+        }
+
+
+
+    }
+
+
+    /**
      * Status of a feature:  GOOD, BAD, or UNKNOWN
      */
     public enum FeatureStatus {
@@ -315,12 +405,23 @@ public class GenomeStats {
         if (function == null)
             this.hypoCount++;
         else {
-            String normalized = StringUtils.substringBefore(function, "#").trim().toLowerCase();
-            if (normalized.contains("hypothetical") || normalized.isEmpty())
+            boolean hypo = isHypothetical(function);
+            if (hypo)
                 this.hypoCount++;
         }
         if (peg.getPlfam() != null)
             this.plfamCount++;
+    }
+
+    /**
+     * @return TRUE if a function is hypothetical
+     *
+     * @param function	the functional assignment of interest
+     */
+    public static boolean isHypothetical(String function) {
+        String normalized = StringUtils.substringBefore(function, "#").trim().toLowerCase();
+        boolean retVal = (normalized.contains("hypothetical") || normalized.isEmpty());
+        return retVal;
     }
 
     /**

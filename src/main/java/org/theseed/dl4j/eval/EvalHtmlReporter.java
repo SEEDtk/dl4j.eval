@@ -274,7 +274,7 @@ public class EvalHtmlReporter extends EvalReporter {
             }
             roleRows.add(tr(td(roleName), numCell(predicted), numCell(actual), td(comment)));
         }
-        // Create the labelling detail rows.
+        // Create the labeling detail rows.
         ArrayList<DomContent> detailRows = new ArrayList<DomContent>();
         detailRow(detailRows, "Genome ID", td(genomeLink(genomeId)));
         detailRow(detailRows, "Genome Name", td(gName));
@@ -303,6 +303,8 @@ public class EvalHtmlReporter extends EvalReporter {
         detailRow(detailRows, "CDS Coverage %", numCell(gReport.getCdsPercent()));
         detailRow(detailRows, "Hypothetical Protein %", colorCell(gReport.isUnderstood(), gReport.getHypotheticalPercent()));
         detailRow(detailRows, "% CDS Features in Local Protein Families", numCell(gReport.getPlfamPercent()));
+        // Ask for extra tables.
+        DomContent extraHtml = this.advancedGenomeAnalysis(gReport);
         // Format the page.
         String page = html(
                 head(
@@ -316,10 +318,22 @@ public class EvalHtmlReporter extends EvalReporter {
                             "The PheS protein is %s.",
                             gReport.getScore(), this.getVersion(), rating, seedRating)),
                     div(table().with(detailRows.stream()).withClass(TABLE_CLASS)).withClass("shrinker"),
+                    extraHtml,
                     formatTable("Potentially Problematic Roles", roleRows)
                 ).withClass(BODY_CLASS)
             ).render();
         FileUtils.writeStringToFile(outFile, page, "UTF-8");
+    }
+
+    /**
+     * Subclasses can use this to create additional data in the output.
+     *
+     * @param gReport	quality
+     *
+     * @return the HTML to insert in the output report
+     */
+    protected DomContent advancedGenomeAnalysis(GenomeStats gReport) {
+        return null;
     }
 
     /**
@@ -538,7 +552,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param tableRows		rows to put in the table
      */
-    private DomContent formatTable(String header, ArrayList<DomContent> tableRows) {
+    protected DomContent formatTable(String header, ArrayList<DomContent> tableRows) {
         return join(
                 h2(header),
                 div(table().with(tableRows.stream()).withClass(TABLE_CLASS + " striped")).withClass("wrapper")

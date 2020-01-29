@@ -13,6 +13,7 @@ import java.util.Set;
 
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
 import org.theseed.genome.Feature;
+import org.theseed.genome.Genome;
 import org.theseed.p3api.Connection;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
@@ -39,8 +40,8 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     private Map<String, KmerCollectionGroup> featureFinder;
     /** reference genome ID */
     private String refGenomeId;
-    /** reference genome name */
-    private String refGenomeName;
+    /** reference genome object */
+    private Genome refGenomeObj;
     /** distance to the reference genome */
     private double refGenomeDistance;
     /** connection to PATRIC */
@@ -64,6 +65,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     public EvalDeepReporter(File outDir) {
         super(outDir);
         this.refGenomeOverride = null;
+        this.refGenomeObj = null;
         this.maxProtDist = MAX_GENOME_DIST;
     }
 
@@ -110,8 +112,50 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     @Override
     protected void advancedDetailRows(ArrayList<DomContent> detailRows) {
         if (this.refGenomeId != null) {
-            this.detailRow(detailRows, "Reference Genome", td(join(genomeLink(this.refGenomeId), this.refGenomeName)));
+            this.detailRow(detailRows, "Reference Genome", td(join(genomeLink(this.refGenomeId), refGenomeName())));
         }
+    }
+
+    /**
+     * Create the comparison report for the reference genome.
+     *
+     * @param gReport	quality
+     *
+     * @return the HTML to insert in the output report
+     */
+    protected DomContent advancedGenomeAnalysis(GenomeStats gReport) {
+        DomContent retVal = null;
+        if (this.refGenomeId != null) {
+            // We need to compute the feature counts for this genome and the reference.
+            RoleMap roleDefinitions = this.getRoleMap();
+            GenomeStats.Counts newCounts = gReport.new Counts(gReport.getGenome(), roleDefinitions);
+            GenomeStats.Counts refCounts = gReport.new Counts(this.refGenomeObj, roleDefinitions);
+            // Create a table of the counts.
+            ArrayList<DomContent> tableRows = new ArrayList<DomContent>(5);
+            tableRows.add(tr(th("Feature count"), th("This Genome").withClass("num"),
+                    th("Ref Genome").withClass("num"), th("% This/Ref").withClass("num")));
+            tableRows.add(compareTableRow("Total features in the genome", newCounts.getFidCount(), refCounts.getFidCount()));
+            tableRows.add(compareTableRow("Features that are protein-coding genes", newCounts.getPegCount(), refCounts.getPegCount()));
+            tableRows.add(compareTableRow("Features with hypothetical proteins", newCounts.getHypoCount(), refCounts.getHypoCount()));
+            tableRows.add(compareTableRow("Features performing subsystem-related roles", newCounts.getKnownCount(), refCounts.getKnownCount()));
+            tableRows.add(compareTableRow("Features performing one of the roles used in this evaluation",
+                    newCounts.getFidCount(), refCounts.getFidCount()));
+            retVal = formatTable("Comparison of " + gReport.getId() + " with Reference Genome " + this.refGenomeId,
+                    tableRows);
+        }
+        return retVal;
+    }
+
+    /**
+     * Create a table row for the comparison counts.
+     *
+     * @param label		description of the count
+     * @param newValue	count for this genome
+     * @param oldValue	count for reference genome
+     */
+    private DomContent compareTableRow(String label, int newValue, int oldValue) {
+        double percent = (oldValue > 0 ? newValue * 100.0 / oldValue : 0);
+        return tr(td(label), numCell(newValue), numCell(oldValue), numCell(percent));
     }
 
     /**
@@ -227,10 +271,11 @@ public class EvalDeepReporter extends EvalHtmlReporter {
                 if (refGenome == null) {
                     log.error("Reference genome {} not found in PATRIC.", this.refGenomeId);
                     this.refGenomeId = null;
+                    this.refGenomeObj = null;
                 } else {
                     // Here we can use the reference genome.
-                    this.refGenomeName = refGenome.getName();
-                    log.info("Analyzing reference genome {}: {}.", this.refGenomeId, this.refGenomeName);
+                    this.refGenomeObj = refGenome;
+                    log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
                     // Create the problematic role directory.
                     Set<String> targetRoles = gReport.getProblematicRoles();
                     this.featureFinder = new HashMap<String, KmerCollectionGroup>(targetRoles.size());
@@ -256,6 +301,13 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     }
 
     /**
+     * @return the name of the current reference genome
+     */
+    private String refGenomeName() {
+        return this.refGenomeObj.getName();
+    }
+
+    /**
      * Specify an override reference genome ID.
      *
      * @param refGenomeId	ID of the reference genome to be used for all reports
@@ -266,11 +318,12 @@ public class EvalDeepReporter extends EvalHtmlReporter {
         this.p3 = new Connection();
         P3Genome refGenome = P3Genome.Load(p3, refGenomeId, P3Genome.Details.PROTEINS);
         if (refGenome == null) {
-            throw new IllegalArgumentException("Reference genome " + refGenome + " not found in PATRIC.");
+            throw new IllegalArgumentException("Reference genome " + refGenomeId + " not found in PATRIC.");
         } else {
             // Here we can use the reference genome.
-            this.refGenomeName = refGenome.getName();
-            log.info("Analyzing reference genome {}: {}.", this.refGenomeId, this.refGenomeName);
+            this.refGenomeId = refGenomeId;
+            this.refGenomeObj = refGenome;
+            log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
             // Create the problematic role directory.
             this.featureFinder = new HashMap<String, KmerCollectionGroup>();
             // Get the role definitions.  Note we are going to save all the roles, not just the problematic ones,

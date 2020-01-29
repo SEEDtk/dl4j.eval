@@ -172,17 +172,9 @@ public class Evaluator {
             // Check for terse mode.
             if (this.terse)
                 this.reporter.setOption(EvalReporter.Option.NODETAILS);
-            // Here we tune the deep report.
-            if (this.reporter instanceof EvalDeepReporter) {
-                EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
-                if (this.refGenomeId != null)
-                    deepReporter.setRefGenomeOverride(this.refGenomeId);
-                if (this.sensitivity < 0 || this.sensitivity >= 1.0) {
-                    throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
-                } else {
-                    deepReporter.setSensitivity(this.sensitivity);
-                }
-            }
+            // Validate the sensitivity.
+            if (this.sensitivity < 0 || this.sensitivity >= 1.0)
+                throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
             retVal = true;
         }
         return retVal;
@@ -344,9 +336,16 @@ public class Evaluator {
      */
     protected void writeOutput() throws IOException {
         log.info("Writing output for batch.");
-        // If this is our first time, initialize the summary report.
+        // If this is our first time, initialize the reports.
         if (this.gCount == this.nGenomes) {
             this.reporter.open(this.version, this.roleDefinitions, this.modelDir);
+            // Here we tune the deep report.
+            if (this.reporter instanceof EvalDeepReporter) {
+                EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
+                if (this.refGenomeId != null)
+                    deepReporter.setRefGenomeOverride(this.refGenomeId);
+                deepReporter.setSensitivity(this.sensitivity);
+            }
         }
         for (int g = 0; g < this.nGenomes; g++) {
             GenomeStats gReport = this.reports[g];
@@ -421,9 +420,5 @@ public class Evaluator {
         return outDir;
     }
 
-    public void setRefGenomeOverride(String refGenomeId) {
-        // TODO Auto-generated method stub
-
-    }
 
 }
