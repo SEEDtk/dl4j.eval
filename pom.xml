@@ -53,7 +53,12 @@
         <artifactId>p3api</artifactId>
         <version>0.0.1</version>
     </dependency>
-  </dependencies>
+    <dependency>
+        <groupId>com.j2html</groupId>
+        <artifactId>j2html</artifactId>
+        <version>1.4.0</version>
+    </dependency>
+</dependencies>
 
   <build>
     <pluginManagement><!-- lock down plugins versions to avoid using Maven defaults (may be moved to parent pom) -->

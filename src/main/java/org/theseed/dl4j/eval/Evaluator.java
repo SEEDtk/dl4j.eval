@@ -3,11 +3,11 @@ package org.theseed.dl4j.eval;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import java.util.Scanner;
 
+import org.apache.commons.io.FileUtils;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.util.ModelSerializer;
 import org.kohsuke.args4j.Argument;
@@ -21,6 +21,7 @@ import org.theseed.counters.CountMap;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.io.TabbedLineReader;
+import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 
@@ -68,6 +69,14 @@ public class Evaluator {
     private List<UniversalRoles> compList;
     /** start time in milliseconds */
     private long start;
+    /** evaluation version string */
+    private String version;
+    /** total number of genomes evaluated */
+    private int gCount;
+    /** reporting object */
+    private EvalReporter reporter;
+    /** directory of consistency role models */
+    private File roleDir;
 
     // COMMAND LINE OPTIONS
 
@@ -78,12 +87,27 @@ public class Evaluator {
     /** summary-only flag */
     @Option(name = "--terse", usage = "do not output detail files")
     private boolean terse;
+
+    /** clear-output flag */
+    @Option(name = "--clear", usage = "clear output directory before starting")
+    private boolean clearOutDir;
+
     /** debug-message flag */
     @Option(name = "-v", aliases = { "--verbose", "--debug" }, usage = "show more detailed progress messages")
     private boolean debug;
+
+    /** reporting format */
+    @Option(name = "--format", usage = "format for output reports")
+    private EvalReporter.Type format;
+
+    /** override reference genome */
+    @Option(name = "--ref", usage = "reference genome for deep evaluation reports")
+    private String refGenomeId;
+
     /** model directory */
     @Argument(index = 0, metaVar = "modelDir", usage = "model directory", required = true)
     private File modelDir;
+
     /** output directory */
     @Option(name = "-o", aliases = { "--outDir", "--output" }, metaVar = "outDir", usage = "output directory")
     private File outDir;
@@ -96,7 +120,16 @@ public class Evaluator {
         this.help = false;
         this.terse = false;
         this.debug = false;
+        this.clearOutDir = false;
         this.outDir = new File(System.getProperty("user.dir"));
+        this.format = EvalReporter.Type.TEXT;
+    }
+
+    /**
+     * @return the detail level needed in genomes read from PATRIC (can be overridden by subclasses)
+     */
+    public P3Genome.Details getDetailLevel() {
+        return this.reporter.getDetailLevel();
     }
 
     /**
@@ -112,6 +145,11 @@ public class Evaluator {
             throw new FileNotFoundException("Model directory " + this.modelDir + " not found or invalid.");
         } else {
             log.info("Evaluation database is in directory {}.", this.modelDir);
+            // Get the consistency role directory.
+            this.roleDir = new File(this.modelDir, "Roles");
+            if (! this.roleDir.isDirectory())
+                throw new FileNotFoundException("Roles subdirectory not found in " + this.modelDir + ".");
+            // Check the output directory.
             if (! this.outDir.exists()) {
                 log.info("Creating directory {}.", this.outDir);
                 if (! this.outDir.mkdir()) {
@@ -119,11 +157,29 @@ public class Evaluator {
                 }
             } else if (! this.outDir.isDirectory()) {
                 throw new FileNotFoundException("Output directory " + this.outDir + " is invalid.");
+            } else if (this.clearOutDir) {
+                log.info("Erasing output directory.");
+                FileUtils.cleanDirectory(this.outDir);
             }
             log.info("Output will be in directory {}.", this.outDir);
+            // Create the reporting object.
+            this.reporter = EvalReporter.Create(this.outDir, this.format);
+            // Check for terse mode.
+            if (this.terse)
+                this.reporter.setOption(EvalReporter.Option.NODETAILS);
+            // Save the reference genome override if we are doing a deep report.
+            if (this.refGenomeId != null && this.reporter instanceof EvalDeepReporter)
+                ((EvalDeepReporter) this.reporter).setRefGenomeOverride(this.refGenomeId);
             retVal = true;
         }
         return retVal;
+    }
+
+    /**'
+     * Turn off the summary report.
+     */
+    public void suppressSummary() {
+        this.reporter.setOption(EvalReporter.Option.NOSUMMARY);
     }
 
     /**
@@ -152,6 +208,10 @@ public class Evaluator {
         }
         // Start the clock.
         this.start = System.currentTimeMillis();
+        this.gCount = 0;
+        // Compute the version.
+        this.loadVersion();
+        log.info("Evaluation database version is {}.", this.version);
         // Read in the consistency roles.
         this.roles = new ArrayList<String>(2800);
         File rolesToUseFile = new File(this.modelDir, "roles.to.use");
@@ -181,9 +241,10 @@ public class Evaluator {
      * @param genome	the Genome object to process
      */
     protected void processGenome(int iGenome, Genome genome) {
-        log.trace("Processing #{} {}: {}.", iGenome, genome.getId(), genome.getName());
+        this.gCount++;
+        log.trace("Processing #{} {}: {}.", gCount, genome.getId(), genome.getName());
         // Create the reporting object.
-        GenomeStats gReport = new GenomeStats(genome.getId(), genome.getDomain(), genome.getName());
+        GenomeStats gReport = new GenomeStats(genome);
         this.reports[iGenome] = gReport;
         // This will contain the role counts.
         CountMap<String> roleCounts = new CountMap<String>();
@@ -226,7 +287,7 @@ public class Evaluator {
         log.info("Analyzing roles for {} genomes.", this.nGenomes);
         for (int iRole = 0; iRole < this.roles.size(); iRole++) {
             String role = this.roles.get(iRole);
-            File modelFile = new File(this.modelDir, role + ".ser");
+            File modelFile = new File(this.roleDir, role + ".ser");
             if (modelFile.exists()) {
                 this.rolesUsed[iRole] = true;
                 log.trace("Processing role #{} {}.", iRole, role);
@@ -269,69 +330,52 @@ public class Evaluator {
      * @throws IOException
      */
     protected void writeOutput() throws IOException {
-        // Write the summary file and the output files.
-        try (PrintWriter outStream = new PrintWriter(new File(this.outDir, "summary.tbl"))) {
-            log.info("Writing output for {} genomes.", this.nGenomes);
-            outStream.println("Genome\tName\tCoarse\tFine\tCompleteness\tContamination\tHypothetical\tContigs\tGood_Seed\tScore");
-            for (int g = 0; g < this.nGenomes; g++) {
-                String genome = this.reports[g].getId();
-                GenomeStats gReport = this.reports[g];
-                String gName = gReport.getName();
-                double coarsePct = gReport.getCoarsePercent();
-                double finePct = gReport.getFinePercent();
-                double completePct = gReport.getCompletePercent();
-                double contamPct = gReport.getContaminationPercent();
-                double hypoPct = gReport.getHypotheticalPercent();
-                int contigs = gReport.getContigCount();
-                double score = gReport.getScore();
-                String goodSeed = (gReport.isGoodSeed() ? "Y" : "");
-                File outFile = new File(this.outDir, genome + ".out");
-                if (! this.terse) {
-                    log.trace("Writing {}.", outFile);
-                    try (PrintWriter genomeStream = new PrintWriter(outFile)) {
-                        genomeStream.println("Role\tactual\tpredicted\tuniversal");
-                        Collection<String> pprs = gReport.getProblematicRoles();
-                        for (String role : pprs) {
-                            GenomeStats.ProblematicRole ppr = gReport.getReport(role);
-                            String uFlag = (ppr.isUniversal() ? "Y" : "");
-                            genomeStream.format("%s\t%d\t%d\t%s%n", role, ppr.getActual(), ppr.getPredicted(), uFlag);
-                        }
-                        genomeStream.println();
-                        genomeStream.format("*\tCompleteness Group\t%s\t%n", gReport.getGroup());
-                        genomeStream.format("*\tCompleteness\t%2.2f\t%n", completePct);
-                        genomeStream.format("*\tContamination\t%2.2f\t%n", contamPct);
-                        genomeStream.format("*\tCoarse Consistency\t%2.2f\t%n", coarsePct);
-                        genomeStream.format("*\tFine Consistency\t%2.2f\t%n", finePct);
-                        genomeStream.format("*\tHypothetical Rate\t%2.2f\t%n", hypoPct);
-                        genomeStream.format("*\tPLFAM Coverage\t%2.2f\t%n", gReport.getPlfamPercent());
-                        genomeStream.format("*\tCDS Coverage\t%2.2f\t%n", gReport.getCdsPercent());
-                        genomeStream.format("*\tDNA Length\t%d\t%n", gReport.getDnaSize());
-                        genomeStream.format("*\tContig Count\t%d\t%n", gReport.getContigCount());
-                        genomeStream.format("*\tHypothetical Roles\t%d\t%n", gReport.getHypoCount());
-                        genomeStream.format("*\tContig Length L50\t%d\t%n", gReport.getL50());
-                        genomeStream.format("*\tContig Length N50\t%d\t%n", gReport.getN50());
-                        genomeStream.format("*\tCDS Count\t%d\t%n", gReport.getPegCount());
-                        genomeStream.format("*\tPLFAM Protein Count\t%d\t%n", gReport.getPlfamCount());
-                        genomeStream.format("*\tGood PheS found\t%s\t%n", (gReport.isGoodSeed() ? "Yes" : "No"));
-                    }
-                }
-                outStream.format("%s\t%s\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8d\t%-8s\t%8.2f%n",
-                        genome, gName, coarsePct, finePct, completePct, contamPct, hypoPct, contigs, goodSeed, score);
-            }
+        log.info("Writing output for batch.");
+        // If this is our first time, initialize the summary report.
+        if (this.gCount == this.nGenomes) {
+            this.reporter.open(this.version, this.roleDefinitions, this.modelDir);
+        }
+        for (int g = 0; g < this.nGenomes; g++) {
+            GenomeStats gReport = this.reports[g];
+            this.reporter.writeGenome(gReport);
         }
     }
 
     // Finish processing and clean up.
     public void close() {
-        String rate = String.format("%6.2f", (double) (System.currentTimeMillis() - start) / (this.nGenomes * 1000));
-        log.info("{} genomes evaluated at {} seconds/genome.", this.nGenomes, rate);
+        // Close the report object.
+        this.reporter.close();
+        // Output the time spent.
+        String rate = String.format("%6.2f", (double) (System.currentTimeMillis() - start) / (this.gCount * 1000));
+        log.info("{} genomes evaluated at {} seconds/genome.", this.gCount, rate);
     }
+
 
     /**
      * @return the number of genomes in the current batch
      */
-    protected int getnGenomes() {
+    protected int getGenomeCount() {
         return nGenomes;
+    }
+
+    /**
+     * @return the version string for the evaluation database
+     */
+    protected String getVersion() {
+        return this.version;
+    }
+
+    /**
+     * Compute the version of this evaluation model
+     */
+    private void loadVersion() {
+        File vFile = new File(this.modelDir, "VERSION");
+        try (Scanner vScanner = new Scanner(vFile)) {
+            this.version = vScanner.nextLine();
+        } catch (IOException e) {
+            // Cannot read version file, use the directory name.
+            this.version = String.format("%s (%s)", this.modelDir.getName(), e.getMessage());
+        }
     }
 
     /**
@@ -362,6 +406,11 @@ public class Evaluator {
      */
     protected File getOutDir() {
         return outDir;
+    }
+
+    public void setRefGenomeOverride(String refGenomeId) {
+        // TODO Auto-generated method stub
+
     }
 
 }

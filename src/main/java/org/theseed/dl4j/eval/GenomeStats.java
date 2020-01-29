@@ -5,8 +5,11 @@ package org.theseed.dl4j.eval;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -16,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
+import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
@@ -31,10 +35,8 @@ public class GenomeStats {
 
     // FIELDS
 
-    /** genome ID */
-    private String id;
-    /** genome name */
-    private String name;
+    /** source genome */
+    private Genome genome;
     /** completeness group */
     private String group;
     /** number of extra role occurrences for completeness */
@@ -55,8 +57,10 @@ public class GenomeStats {
     private int hypoCount;
     /** number of features with local protein families */
     private int plfamCount;
-    /** hash of problematic roles */
+    /** map of problematic roles */
     private SortedMap<String, ProblematicRole> problematicRoles;
+    /** set of useful roles */
+    private Set<String> usefulRoles;
     /** total contig length */
     private int dnaSize;
     /** number of contigs */
@@ -65,12 +69,14 @@ public class GenomeStats {
     private int l50;
     /** smallest contig in the set of longest contigs covering 50% of the total */
     private int n50;
+    /** smallest number of contigs that covers 70% of the total */
+    private int l70;
+    /** smallest contig in the set of longest contigs covering 70% of the total */
+    private int n70;
     /** number of seed proteins found */
     private int seedCount;
     /** longest seed protein found */
     private String seedProt;
-    /** domain of this genome */
-    private String domain;
 
     /**
      * This object describes the statistics of a problematic role.
@@ -82,6 +88,8 @@ public class GenomeStats {
         private int predicted;
         /** number of actual occurrences */
         private int actual;
+        /** list of features containing this role */
+        private List<Feature> features;
 
         /**
          * Construct a problematic role record.
@@ -94,6 +102,7 @@ public class GenomeStats {
             this.universal = universal;
             this.predicted = predicted;
             this.actual = actual;
+            this.features = new ArrayList<Feature>(5);
         }
 
         /**
@@ -117,18 +126,28 @@ public class GenomeStats {
             return actual;
         }
 
+        /**
+         * @return the list of features containing this role
+         */
+        public List<Feature> getFeatures() {
+            return this.features;
+        }
 
     }
+
+    /**
+     * Status of a feature:  GOOD, BAD, or UNKNOWN
+     */
+    public enum FeatureStatus {
+        GOOD, BAD, UNKNOWN;
+    }
+
     /** Construct an empty genome stats object.
      *
-     * @param id		ID of the genome
-     * @param domain	domain of the genome (Bacteria or Archaea)
-     * @param name		name of the genome
+     * @param genome	source genome object
      */
-    public GenomeStats(String id, String domain, String name) {
-        this.id = id;
-        this.name = name;
-        this.group = null;
+    public GenomeStats(Genome genome) {
+        this.genome = genome;
         this.contaminationCount = 0;
         this.missingCount = 0;
         this.completeCount = 0;
@@ -139,27 +158,25 @@ public class GenomeStats {
         this.hypoCount = 0;
         this.plfamCount = 0;
         this.problematicRoles = new TreeMap<String, ProblematicRole>();
+        this.usefulRoles = new HashSet<String>(2500);
         this.seedCount = 0;
         this.seedProt = "";
         this.l50 = 0;
         this.n50 = 0;
-        this.dnaSize = 0;
-        this.contigCount = 0;
-        this.domain = domain;
     }
 
     /**
      * @return the genome ID
      */
     public String getId() {
-        return id;
+        return this.genome.getId();
     }
 
     /**
      * @return the genome name
      */
     public String getName() {
-        return name;
+        return this.genome.getName();
     }
 
     /**
@@ -194,6 +211,7 @@ public class GenomeStats {
             ProblematicRole report = new ProblematicRole(false, predicted, actual);
             this.problematicRoles.put(role, report);
         }
+        this.usefulRoles.add(role);
     }
 
     /**
@@ -213,6 +231,7 @@ public class GenomeStats {
                 this.contaminationCount += actual - 1;
             }
         }
+        this.usefulRoles.add(role);
     }
 
     /**
@@ -249,18 +268,40 @@ public class GenomeStats {
         if (this.dnaSize <= 0) {
             this.l50 = 0;
             this.n50 = 0;
+            this.n70 = 0;
+            this.l70 = 0;
         } else {
-            // Work backwards until we find the split point.  First we do a cheap divide by 2 rounding up.
-            int remaining = (this.dnaSize + 1) >> 1;
-            i = lengths.length - 1;
-            for (i = lengths.length - 1; remaining > 0; i--)
-                remaining -= lengths[i];
-            // Get back the correct array index for the split point.
-            i++;
+            // Work backwards until we find the split point for 50% of the genome.
+            i = findSplitPoint(lengths, 50);
             // Store the results.
             this.l50 = lengths.length - i;
             this.n50 = lengths[i];
+            // Do it again for N70.
+            i = findSplitPoint(lengths, 70);
+            this.l70 = lengths.length - i;
+            this.n70 = lengths[i];
         }
+    }
+
+    /**
+     * Given a sorted array of contig lengths, find the contig length at the split point for the
+     * specified ratio.  A ratio of 70, for example, will return the contig length for the N70.
+     *
+     * @param lengths	array of contig lengths, sorted in ascending order
+     * @param ratio		percentage for the split point
+     *
+     * @return the index of the contig length at the split point
+     */
+    private int findSplitPoint(int[] lengths, int ratio) {
+        int retVal;
+        // Compute the split point, rounding up.
+        int remaining = (this.dnaSize * ratio + 99) / 100;
+        retVal = lengths.length - 1;
+        for (retVal = lengths.length - 1; remaining > 0; retVal--)
+            remaining -= lengths[retVal];
+        // Get back the correct array index for the split point.
+        retVal++;
+        return retVal;
     }
 
     /**
@@ -370,7 +411,7 @@ public class GenomeStats {
         boolean retVal = false;
         if (this.seedCount == 1) {
             int len = this.seedProt.length();
-            if (this.domain.charAt(0) == 'A') {
+            if (this.getDomain().charAt(0) == 'A') {
                 retVal = (len >= 293 && len <= 652);
             } else {
                 retVal = (len >= 209 && len <= 405);
@@ -446,12 +487,20 @@ public class GenomeStats {
     }
 
     /**
+     * @return the genome object for these statistics
+     */
+    public Genome getGenome() {
+        return this.genome;
+    }
+
+    /**
      * Store this quality information in the specified GTO.
      *
      * @param gto		JSON object into which the quality information should be stored
      * @param roles		role definition table
+     * @param version	version string for the evaluation database
      */
-    public void store(JsonObject gto, RoleMap roles) {
+    public void store(JsonObject gto, RoleMap roles, String version) {
         // Record this as an analysis event.
         JsonArray events = (JsonArray) gto.get("analysis_events");
         if (events == null) {
@@ -481,8 +530,12 @@ public class GenomeStats {
         quality.put("cds_ratio", this.getCdsPercent());
         quality.put("fine_consistency", this.getFinePercent());
         quality.put("completeness_group", this.getGroup());
+        // Store the version string.
+        quality.put("eval_version", version);
         // Genome metrics is a hash.
-        JsonObject metrics = new JsonObject().putChain("N50", this.getN50()).putChain("L50", this.getL50()).putChain("totlen", this.dnaSize);
+        JsonObject metrics = new JsonObject().putChain("N50", this.getN50()).putChain("L50", this.getL50())
+                .putChain("N70", this.getN70()).putChain("L70", this.getL70())
+                .putChain("totlen", this.dnaSize);
         quality.put("genome_metrics", metrics);
         // Finally, the problematic roles report.  We create two lists in parallel, one for consistency and one for completeness.
         // We also need to count the overs and unders, and we need to save the role definitions.
@@ -511,5 +564,116 @@ public class GenomeStats {
         quality.put("problematic_roles_report", problematicRoles);
     }
 
+    /**
+     * @return TRUE if this genome is clean, else FALSE
+     */
+    public boolean isClean() {
+        return (getContaminationPercent() < 10.0);
+    }
+
+    /**
+     * @return TRUE if this genome is good, else FALSE
+     */
+    public boolean isGood() {
+        return isClean() && isUnderstood() && isComplete() && isConsistent() && isGoodSeed();
+    }
+
+    /**
+     * @return TRUE if this genome is consistently annotated, else FALSE
+     */
+    public boolean isConsistent() {
+        return (getFinePercent() >= 87.0);
+    }
+
+    /**
+     * @return TRUE if this genome is mostly complete, else FALSE
+     */
+    public boolean isComplete() {
+        return (getCompletePercent() >= 80.0);
+    }
+
+    /**
+     * @return TRUE if this genome's proteins are understood, else FALSE
+     */
+    public boolean isUnderstood() {
+        return (getHypotheticalPercent() <= 70.0);
+    }
+
+    /**
+     * @return the number of roles used to check consistency
+     */
+    public int getConsistencyRoleCount() {
+        return this.consistentCount;
+    }
+
+    /**
+     * @return the number of roles used to check completeness
+     */
+    public int getCompletenessRoleCount() {
+        return this.completeCount;
+    }
+
+    /**
+     * @return the domain of this genome
+     */
+    public String getDomain() {
+        return this.genome.getDomain();
+    }
+
+    /**
+     * Process a feature to determine if it is problematic, and return a good/bad flag.
+     *
+     * @param feat		feature to check
+     * @param roles		collection of roles in the feature
+     *
+     * @return the quality status of this feature
+     */
+    public FeatureStatus checkProblematicRoles(Feature feat, Collection<Role> roles) {
+        // Loop through the roles in this genome.  We presume the feature is unknown unless
+        // it has at least one good or bad role.  Good roles override the bad ones.
+        FeatureStatus retVal = FeatureStatus.UNKNOWN;
+        for (Role role : roles) {
+            String roleId = role.getId();
+            ProblematicRole ppr = this.getReport(roleId);
+            if (ppr != null) {
+                // Here the role is bad.
+                ppr.features.add(feat);
+                if (retVal != FeatureStatus.GOOD)
+                    retVal = FeatureStatus.BAD;
+            } else if (this.usefulRoles.contains(roleId)) {
+                // Here we checked the role and it is not bad, so it is good.
+                retVal = FeatureStatus.GOOD;
+            }
+        }
+        return retVal;
+    }
+
+    /**
+     * @return the contig L70 metric
+     */
+    public int getL70() {
+        return l70;
+    }
+
+    /**
+     * @return the contig N70 metric
+     */
+    public int getN70() {
+        return n70;
+    }
+
+    /**
+     * @return the number of roles checked by both methods
+     */
+    public int getCommonRoleCount() {
+        return this.completeCount + this.consistentCount - this.usefulRoles.size();
+    }
+
+    /**
+     * @return TRUE if this role was checked during evaluation
+     */
+    public boolean isUseful(String role) {
+        return this.usefulRoles.contains(role);
+    }
 
 }

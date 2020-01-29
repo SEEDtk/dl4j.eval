@@ -26,9 +26,9 @@ import org.theseed.utils.ICommand;
  * The input directory should contain a GTO file for each genome to evaluate.  Alternative, the second parameter can be the
  * name of an input GTO file, and then only that single file will be processed.
  *
- * When we are done, the output directory will contain a I<genomeID><code>.out</code> file for each genome.  This file will
+ * When we are done, the output directory will contain a I<genomeID><code>.tsv</code> file for each genome.  This file will
  * contain the quality numbers plus the predicted and actual counts for each role.  In addition, a
- * summary of the results will be placed in "summary.tbl" in the same directory.
+ * summary of the results will be placed in "summary.tsv" in the same directory.
  *
  * The command-line options are as follows.
  *
@@ -37,14 +37,14 @@ import org.theseed.utils.ICommand;
  *
  * --terse		do not write the individual output files, only the summary
  * --update		store the quality information in the GTO and write it to the output directory
+ * --format		specify the output format-- HTML, DEEP, or TEXT
+ * --ref		ID of a reference genome to use for all the evaluation reports
  *
  * @author Bruce Parrello
  *
  */
 public class EvalProcessor extends Evaluator implements ICommand {
 
-    /** in update mode, these are the saved Genomes so we can update */
-    private Genome[] gtos;
     /** TRUE for single-gto mode */
     private boolean singleton;
 
@@ -109,14 +109,10 @@ public class EvalProcessor extends Evaluator implements ICommand {
                 GenomeDirectory genomeDir = new GenomeDirectory(this.inDir);
                 // We know the number of genomes, so we can allocate our arrays.
                 this.allocateArrays(genomeDir.size());
-                this.gtos = new Genome[genomeDir.size()];
                 // Loop through the genomes.  Note we track the genome's index in genomeStats;
                 int iGenome = 0;
                 for (Genome genome : genomeDir) {
                     processGenome(iGenome, genome);
-                    if (this.update) {
-                        this.gtos[iGenome] = genome;
-                    }
                     // Prepare for the next genome.
                     iGenome++;
                 }
@@ -127,19 +123,21 @@ public class EvalProcessor extends Evaluator implements ICommand {
                 log.info("Reading genome from {}.", this.inDir);
                 Genome genome = new Genome(this.inDir);
                 processGenome(0, genome);
-                this.gtos = new Genome[] { genome };
             }
             // Evaluate the consistency of the genomes.
             evaluateConsistency();
             // Write the results.
             writeOutput();
-            for (int g = 0; g < this.gtos.length; g++) {
-                Genome gObject = this.gtos[g];
-                if (this.update) {
+            // If we are updating GTOs, do it here.
+            if (this.update) {
+                // We need the version string.
+                String version = this.getVersion();
+                for (int g = 0; g < this.getGenomeCount(); g++) {
                     GenomeStats gReport = this.getReport(g);
+                    Genome gObject = gReport.getGenome();
                     String gId = gObject.getId();
                     log.trace("Updating GTO for {}.", gId);
-                    gReport.store(gObject.getJson(), this.roleDefinitions);
+                    gReport.store(gObject.getJson(), this.roleDefinitions, version);
                     File outFile = new File(this.getOutDir(), gId + ".gto");
                     gObject.update(outFile);
                 }

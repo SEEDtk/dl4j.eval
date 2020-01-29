@@ -166,5 +166,5 @@ public class UniversalRoles {
         }
         return retVal;
     }
-    // TODO method to search for best object for a genome (save highest score)
+
 }

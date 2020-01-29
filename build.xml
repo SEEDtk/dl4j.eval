@@ -178,6 +178,7 @@
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/commons-codec/commons-codec/1.11/commons-codec-1.11.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/httpcomponents/fluent-hc/4.5.11/fluent-hc-4.5.11.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/slf4j/slf4j-api/1.7.21/slf4j-api-1.7.21.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/com/j2html/j2html/1.4.0/j2html-1.4.0.jar"/>
         </jar>
     </target>
 </project>

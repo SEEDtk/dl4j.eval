@@ -47,7 +47,8 @@ public class AppTest extends TestCase
      * @throws NumberFormatException
      */
     public void testGenomeStats() throws NumberFormatException, IOException {
-        GenomeStats testGenome = new GenomeStats("100226.11", "Bacteria", "Streptomyces coelicolor clonal population");
+        Genome fakeStreptomyces = new Genome("100226.11", "Streptomyces coelicolor clonal population", "Bacteria", 11);
+        GenomeStats testGenome = new GenomeStats(fakeStreptomyces);
         testGenome.setGroup("root");
         testGenome.completeRole("RoleG", 0);
         testGenome.completeRole("RoleH", 0);
@@ -69,18 +70,36 @@ public class AppTest extends TestCase
         testGenome.consistentRole("RoleJ", 0, 1);
         assertThat(testGenome.getId(), equalTo("100226.11"));
         assertThat(testGenome.getName(), equalTo("Streptomyces coelicolor clonal population"));
+        assertSame(testGenome.getGenome(), fakeStreptomyces);
         assertThat(testGenome.getGroup(), equalTo("root"));
         assertThat(testGenome.getCoarsePercent(), equalTo(60.0));
         assertThat(testGenome.getFinePercent(), equalTo(40.0));
         assertThat(testGenome.getCompletePercent(), equalTo(75.0));
         assertThat(testGenome.getContaminationPercent(), equalTo(20.0));
+        assertFalse(testGenome.isConsistent());
+        assertFalse(testGenome.isComplete());
+        assertFalse(testGenome.isClean());
+        assertFalse(testGenome.isGood());
         // Make sure we can catch fractional percents.
         testGenome.completeRole("RoleK", 1);
         assertThat(testGenome.getCompletePercent(), closeTo(77.78, 0.005));
         assertThat(testGenome.getContaminationPercent(), closeTo(18.18, 0.005));
+        assertFalse(testGenome.isConsistent());
+        assertFalse(testGenome.isClean());
         testGenome.consistentRole("RoleL", 2, 2);
         assertThat(testGenome.getFinePercent(), closeTo(45.45, 0.005));
         assertThat(testGenome.getCoarsePercent(), closeTo(63.64, 0.005));
+        assertFalse(testGenome.isConsistent());
+        testGenome.consistentRole("RoleL", 2, 2);
+        for (int i = 0; i < 34; i++) {
+            String rName = "Role" + Integer.toString(i);
+            testGenome.consistentRole(rName, 1, 1);
+            testGenome.completeRole(rName, 1);
+            assertFalse(testGenome.isConsistent());
+        }
+        testGenome.consistentRole("RoleX", 0, 0);
+        assertTrue(testGenome.isConsistent());
+        assertTrue(testGenome.isComplete());
         // Get the list of problematic roles.
         Collection<String> pprs = testGenome.getProblematicRoles();
         assertThat(pprs, contains("RoleE", "RoleF", "RoleG", "RoleH", "RoleI", "RoleJ"));
@@ -95,6 +114,7 @@ public class AppTest extends TestCase
         assertThat(ppr.getActual(), equalTo(0));
         // Test seed proteins
         assertFalse(testGenome.isGoodSeed());
+        assertFalse(testGenome.isGood());
         String p1 = StringUtils.repeat('X', 250);
         testGenome.countSeed(p1);
         assertTrue(testGenome.isGoodSeed());
@@ -106,13 +126,15 @@ public class AppTest extends TestCase
         testGenome.countSeed(p2);
         assertFalse(testGenome.isGoodSeed());
         assertThat(testGenome.getSeed(), equalTo(p2));
-        testGenome = new GenomeStats("83333.1", "Bacteria", "Escherichia coli K12");
+        Genome fakeEColi = new Genome("83333.1", "Escherichia coli K12", "Bacteria", 11);
+        testGenome = new GenomeStats(fakeEColi);
         testGenome.countSeed(p2);
         assertTrue(testGenome.isGoodSeed());
-        testGenome = new GenomeStats("83333.1", "Bacteria", "Escherichia coli K12");
+        testGenome = new GenomeStats(fakeEColi);
         testGenome.countSeed(StringUtils.repeat('X', 500));
         assertFalse(testGenome.isGoodSeed());
-        testGenome = new GenomeStats("1100226.1", "Archaea", "unclassified archaeon");
+        Genome fakeArchy = new Genome("1100226.1", "unclassified archaeon", "Archaea", 4);
+        testGenome = new GenomeStats(fakeArchy);
         assertFalse(testGenome.isGoodSeed());
         testGenome.countSeed(p1);
         assertFalse(testGenome.isGoodSeed());
@@ -123,15 +145,16 @@ public class AppTest extends TestCase
         testGenome.countSeed(p2);
         assertFalse(testGenome.isGoodSeed());
         assertThat(testGenome.getSeed(), equalTo(p2));
-        testGenome = new GenomeStats("83333.1", "Archaea", "Archaeochia coli");
+        Genome fakeArchy2 = new Genome("83333.1", "Archaeochi coli", "Archaea", 11);
+        testGenome = new GenomeStats(fakeArchy2);
         testGenome.countSeed(p2);
         assertTrue(testGenome.isGoodSeed());
-        testGenome = new GenomeStats("83333.1", "Archaea", "Archaeochia coli");
+        testGenome = new GenomeStats(fakeArchy2);
         testGenome.countSeed(StringUtils.repeat('X', 500));
         assertTrue(testGenome.isGoodSeed());
         // Test peg counting.
         Genome myGenome = new Genome(new File("src/test", "test.gto"));
-        testGenome = new GenomeStats(myGenome.getId(), myGenome.getDomain(), myGenome.getName());
+        testGenome = new GenomeStats(myGenome);
         for (Feature peg : myGenome.getPegs())
             testGenome.countPeg(peg);
         testGenome.computeMetrics(myGenome);
@@ -145,6 +168,21 @@ public class AppTest extends TestCase
         assertThat(testGenome.getPegCount(), equalTo(1284));
         assertThat(testGenome.getHypoCount(), equalTo(644));
         assertThat(testGenome.getPlfamCount(), equalTo(1003));
+        assertTrue(testGenome.isUnderstood());
+    }
+
+    /**
+     * test the phrase builder
+     */
+    public void testPhraseBuilder() {
+        PhraseBuilder pb = new PhraseBuilder("which is", ".");
+        assertThat(pb.toString(), equalTo("."));
+        pb.addPhrase("fun");
+        assertThat(pb.toString(), equalTo("which is fun."));
+        pb.addPhrase("free");
+        assertThat(pb.toString(), equalTo("which is fun and free."));
+        pb.addPhrase("philosophical");
+        assertThat(pb.toString(), equalTo("which is fun, free, and philosophical."));
     }
 
     /**
