@@ -51,6 +51,9 @@ public class Evaluator {
 
     // FIELDS
 
+    /** value used to specify no reference genome */
+    private static final String NO_REF_GENOME = "computed";
+
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(EvalProcessor.class);
     /** array of roles to use */
@@ -128,6 +131,7 @@ public class Evaluator {
         this.outDir = new File(System.getProperty("user.dir"));
         this.format = EvalReporter.Type.TEXT;
         this.sensitivity = 0.8;
+        this.refGenomeId = NO_REF_GENOME;
     }
 
     /**
@@ -342,7 +346,7 @@ public class Evaluator {
             // Here we tune the deep report.
             if (this.reporter instanceof EvalDeepReporter) {
                 EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
-                if (this.refGenomeId != null)
+                if (! this.refGenomeId.contentEquals(NO_REF_GENOME))
                     deepReporter.setRefGenomeOverride(this.refGenomeId);
                 deepReporter.setSensitivity(this.sensitivity);
             }
