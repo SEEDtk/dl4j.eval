@@ -176,9 +176,17 @@ public class Evaluator {
             // Check for terse mode.
             if (this.terse)
                 this.reporter.setOption(EvalReporter.Option.NODETAILS);
-            // Validate the sensitivity.
-            if (this.sensitivity < 0 || this.sensitivity >= 1.0)
-                throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
+            // Here we tune the deep report.
+            if (this.reporter instanceof EvalDeepReporter) {
+                // Validate the sensitivity.
+                if (this.sensitivity < 0 || this.sensitivity >= 1.0)
+                    throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
+                // Set the special parameters.
+                EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
+                if (! this.refGenomeId.contentEquals(NO_REF_GENOME))
+                    deepReporter.setRefGenomeOverride(this.refGenomeId);
+                deepReporter.setSensitivity(this.sensitivity);
+            }
             retVal = true;
         }
         return retVal;
@@ -343,13 +351,6 @@ public class Evaluator {
         // If this is our first time, initialize the reports.
         if (this.gCount == this.nGenomes) {
             this.reporter.open(this.version, this.roleDefinitions, this.modelDir);
-            // Here we tune the deep report.
-            if (this.reporter instanceof EvalDeepReporter) {
-                EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
-                if (! this.refGenomeId.contentEquals(NO_REF_GENOME))
-                    deepReporter.setRefGenomeOverride(this.refGenomeId);
-                deepReporter.setSensitivity(this.sensitivity);
-            }
         }
         for (int g = 0; g < this.nGenomes; g++) {
             GenomeStats gReport = this.reports[g];

@@ -72,9 +72,9 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
                 }
                 // Suppress the summary report.
                 this.suppressSummary();
+                // Denote we're ready to run.
+                retVal = true;
             }
-            // Denote we're ready to run.
-            retVal = true;
         } catch (CmdLineException e) {
             System.err.println(e.getMessage());
             // For parameter errors, we display the command usage.

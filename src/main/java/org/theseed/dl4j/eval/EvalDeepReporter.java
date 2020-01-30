@@ -86,6 +86,8 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     protected void initialize(File modelDir) throws IOException {
         // Initialize the base class.
         super.initialize(modelDir);
+        // Get a PATRIC connection.
+        this.p3 = new Connection();
         // Only bother to read in the reference-genome table if we are NOT in override mode.
         if (this.refGenomeOverride == null) {
             // Open the reference genome FASTA file.
@@ -99,9 +101,36 @@ public class EvalDeepReporter extends EvalHtmlReporter {
                 }
                 log.info("{} reference genomes read.", this.referenceGenomes.size());
             }
+        } else {
+            // We are in override mode. Read in the override genome.
+            this.p3 = new Connection();
+            P3Genome refGenome = P3Genome.Load(p3, this.refGenomeOverride, P3Genome.Details.PROTEINS);
+            if (refGenome == null) {
+                throw new IllegalArgumentException("Reference genome " + this.refGenomeOverride + " not found in PATRIC.");
+            } else {
+                // Here we can use the reference genome.
+                this.refGenomeId = refGenomeOverride;
+                this.refGenomeObj = refGenome;
+                log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
+                // Create the problematic role directory.
+                this.featureFinder = new HashMap<String, KmerCollectionGroup>();
+                // Get the role definitions.  Note we are going to save all the roles, not just the problematic ones,
+                // because we are re-using this genome.
+                RoleMap roleMap = this.getRoleMap();
+                // Loop through the features, putting them in the directory.
+                for (Feature feat : refGenome.getPegs()) {
+                    Collection<Role> roles = feat.getUsefulRoles(roleMap);
+                    for (Role role : roles) {
+                        KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
+                        if (roleGroup == null) {
+                            roleGroup = new KmerCollectionGroup();
+                            this.featureFinder.put(role.getId(), roleGroup);
+                        }
+                        roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
+                    }
+                }
+            }
         }
-        // Get a PATRIC connection.
-        this.p3 = new Connection();
     }
 
     /**
@@ -133,7 +162,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
             // Create a table of the counts.
             ArrayList<DomContent> tableRows = new ArrayList<DomContent>(5);
             tableRows.add(tr(th("Feature count"), th("This Genome").withClass("num"),
-                    th("Ref Genome").withClass("num"), th("% This/Ref").withClass("num")));
+                    th("Ref Genome").withClass("num"), th("% This / Ref").withClass("num")));
             tableRows.add(compareTableRow("Total features in the genome", newCounts.getFidCount(), refCounts.getFidCount()));
             tableRows.add(compareTableRow("Features that are protein-coding genes", newCounts.getPegCount(), refCounts.getPegCount()));
             tableRows.add(compareTableRow("Features with hypothetical proteins", newCounts.getHypoCount(), refCounts.getHypoCount()));
@@ -314,34 +343,6 @@ public class EvalDeepReporter extends EvalHtmlReporter {
      */
     public void setRefGenomeOverride(String refGenomeId) {
         this.refGenomeOverride = refGenomeId;
-        // Read in the genome.
-        this.p3 = new Connection();
-        P3Genome refGenome = P3Genome.Load(p3, refGenomeId, P3Genome.Details.PROTEINS);
-        if (refGenome == null) {
-            throw new IllegalArgumentException("Reference genome " + refGenomeId + " not found in PATRIC.");
-        } else {
-            // Here we can use the reference genome.
-            this.refGenomeId = refGenomeId;
-            this.refGenomeObj = refGenome;
-            log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
-            // Create the problematic role directory.
-            this.featureFinder = new HashMap<String, KmerCollectionGroup>();
-            // Get the role definitions.  Note we are going to save all the roles, not just the problematic ones,
-            // because we are re-using this genome.
-            RoleMap roleMap = this.getRoleMap();
-            // Loop through the features, putting them in the directory.
-            for (Feature feat : refGenome.getPegs()) {
-                Collection<Role> roles = feat.getUsefulRoles(roleMap);
-                for (Role role : roles) {
-                    KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
-                    if (roleGroup == null) {
-                        roleGroup = new KmerCollectionGroup();
-                        this.featureFinder.put(role.getId(), roleGroup);
-                    }
-                    roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
-                }
-            }
-        }
     }
 
 
