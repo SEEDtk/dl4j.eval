@@ -45,6 +45,10 @@ import org.theseed.utils.ICommand;
  */
 public class EvalProcessor extends Evaluator implements ICommand {
 
+    // FIELDS
+    /** saved command-line parameters */
+    private String[] options;
+
     // COMMAND LINE
 
     /** update-GTO flag */
@@ -66,6 +70,8 @@ public class EvalProcessor extends Evaluator implements ICommand {
         boolean retVal = false;
         // Set the defaults.
         this.update = false;
+        // Save the parameters.
+        this.options = args;
         // Parse the command line.
         CmdLineParser parser = new CmdLineParser(this);
         try {
@@ -119,7 +125,7 @@ public class EvalProcessor extends Evaluator implements ICommand {
                     Genome gObject = gReport.getGenome();
                     String gId = gObject.getId();
                     log.trace("Updating GTO for {}.", gId);
-                    gReport.store(gObject.getJson(), this.roleDefinitions, version);
+                    gReport.store(gObject, this.roleDefinitions, version, options);
                     File outFile = new File(this.getOutDir(), gId + ".gto");
                     gObject.update(outFile);
                 }

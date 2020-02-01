@@ -595,14 +595,16 @@ public class GenomeStats {
     }
 
     /**
-     * Store this quality information in the specified GTO.
+     * Store this quality information in the specified Genome's GTO.
      *
-     * @param gto		JSON object into which the quality information should be stored
+     * @param genome	genome into which the quality information should be stored
      * @param roles		role definition table
      * @param version	version string for the evaluation database
+     * @param options	original command-line arguments
      */
-    public void store(JsonObject gto, RoleMap roles, String version) {
+    public void store(Genome genome, RoleMap roles, String version, String[] options) {
         // Record this as an analysis event.
+        JsonObject gto = genome.toJson();
         JsonArray events = (JsonArray) gto.get("analysis_events");
         if (events == null) {
             events = new JsonArray();

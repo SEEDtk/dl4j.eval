@@ -43,6 +43,11 @@ import org.theseed.utils.ICommand;
  */
 public class GtoEvalProcessor extends Evaluator implements ICommand {
 
+    // FIELDS
+
+    /** saved command-line arguments */
+    private String[] options;
+
     // COMMAND LINE
 
     /** input file name */
@@ -53,12 +58,15 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
     @Option(name = "-o", aliases = { "--output" }, usage = "output file name (if not STDOUT)")
     private File outFile;
 
+
     @Override
     public boolean parseCommand(String[] args) {
         boolean retVal = false;
         // Set the defaults.
         this.inFile = null;
         this.outFile = null;
+        // Save the arguments.
+        this.options = args;
         // Parse the command line.
         CmdLineParser parser = new CmdLineParser(this);
         try {
@@ -112,7 +120,7 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
             // Retrieve the evaluation report.
             GenomeStats gReport = this.getReport(0);
             log.info("Writing evaluated genome.");
-            gReport.store(genome.getJson(), this.roleDefinitions, version);
+            gReport.store(genome, this.roleDefinitions, version, options);
             if (this.outFile != null) {
                 genome.update(this.outFile);
             } else {
