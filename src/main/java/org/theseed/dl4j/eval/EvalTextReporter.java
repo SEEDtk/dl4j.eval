@@ -110,4 +110,8 @@ public class EvalTextReporter extends EvalReporter {
             this.summaryStream.close();
     }
 
+    @Override
+    protected void setupGenomes(GenomeStats[] reports) {
+    }
+
 }

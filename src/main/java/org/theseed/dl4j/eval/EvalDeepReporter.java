@@ -4,7 +4,6 @@
 package org.theseed.dl4j.eval;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -15,14 +14,10 @@ import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
 import org.theseed.genome.Compare;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
-import org.theseed.p3api.Connection;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.proteins.kmers.KmerCollectionGroup;
-import org.theseed.sequence.FastaInputStream;
-import org.theseed.sequence.Sequence;
-
 import j2html.tags.ContainerTag;
 import j2html.tags.DomContent;
 import static j2html.TagCreator.*;
@@ -35,30 +30,20 @@ import static j2html.TagCreator.*;
  */
 public class EvalDeepReporter extends EvalHtmlReporter {
 
-    /** kmer database for finding the reference genome */
-    private KmerCollectionGroup referenceGenomes;
+    /** computation object for finding the reference genome */
+    private RefGenomeComputer refEngine;
     /** map of problematic roles to feature kmer databases */
     private Map<String, KmerCollectionGroup> featureFinder;
     /** reference genome ID */
     private String refGenomeId;
     /** reference genome object */
     private Genome refGenomeObj;
-    /** distance to the reference genome */
-    private double refGenomeDistance;
-    /** connection to PATRIC */
-    private Connection p3;
     /** map of bad features to closest reference features */
     private Map<String,String> closeFeatureMap;
     /** reference genome ID override */
-    private String refGenomeOverride;
-    /** protein sensitivity */
     private double maxProtDist;
     /** genome comparator */
     private Compare compareObj;
-
-    /** maximum acceptable distance for a reference genome */
-    private static final double MAX_GENOME_DIST = 0.8;
-
 
     /**
      * Construct a deep HTML reporting object.
@@ -67,9 +52,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
      */
     public EvalDeepReporter(File outDir) {
         super(outDir);
-        this.refGenomeOverride = null;
-        this.refGenomeObj = null;
-        this.maxProtDist = MAX_GENOME_DIST;
+        this.maxProtDist = RefGenomeComputer.MAX_GENOME_DIST;
         this.compareObj = new Compare();
     }
 
@@ -81,71 +64,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
         return P3Genome.Details.PROTEINS;
     }
 
-    /**
-     * Initialize the reference-genome database.
-     *
-     * @param modelDir	evaluation data directory
-     */
-    @Override
-    protected void initialize(File modelDir) throws IOException {
-        // Initialize the base class.
-        super.initialize(modelDir);
-        // Get a PATRIC connection.
-        this.p3 = new Connection();
-        // Only bother to read in the reference-genome table if we are NOT in override mode.
-        if (this.refGenomeOverride == null) {
-            // Open the reference genome FASTA file.
-            File refGenomeFile = new File(modelDir, "refGenomes.fa");
-            try (FastaInputStream refStream = new FastaInputStream(refGenomeFile)) {
-                // Create the kmer database object.
-                this.referenceGenomes = new KmerCollectionGroup();
-                log.info("Reading reference genomes from {}", refGenomeFile);
-                for (Sequence seq : refStream) {
-                    this.referenceGenomes.addSequence(seq, seq.getLabel());
-                }
-                log.info("{} reference genomes read.", this.referenceGenomes.size());
-            }
-        } else {
-            // We are in override mode. Read in the override genome.
-            this.p3 = new Connection();
-            Genome refGenome;
-            if (this.refGenomeOverride.contains(".gto")) {
-                // Here the genome is in a GTO file.
-                File gFile = new File(this.refGenomeOverride);
-                log.info("Reading reference genome from " + gFile.getAbsolutePath());
-                refGenome = new Genome(gFile);
-                this.refGenomeOverride = refGenome.getId();
-            } else {
-                refGenome = P3Genome.Load(p3, this.refGenomeOverride, P3Genome.Details.PROTEINS);
-                if (refGenome == null)
-                    throw new IllegalArgumentException("Reference genome " + this.refGenomeOverride + " not found in PATRIC.");
-            }
-            // Here we can use the reference genome.
-            this.refGenomeId = refGenomeOverride;
-            this.refGenomeObj = refGenome;
-            log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
-            // Create the problematic role directory.
-            this.featureFinder = new HashMap<String, KmerCollectionGroup>();
-            // Get the role definitions.  Note we are going to save all the roles, not just the problematic ones,
-            // because we are re-using this genome.
-            RoleMap roleMap = this.getRoleMap();
-            // Loop through the features, putting them in the directory.
-            for (Feature feat : refGenome.getPegs()) {
-                Collection<Role> roles = feat.getUsefulRoles(roleMap);
-                for (Role role : roles) {
-                    KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
-                    if (roleGroup == null) {
-                        roleGroup = new KmerCollectionGroup();
-                        this.featureFinder.put(role.getId(), roleGroup);
-                    }
-                    roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
-                }
-            }
-        }
-    }
-
-    /**
-     * Add the reference genome information to the detail table rows.
+    /* Add the reference genome information to the detail table rows.
      *
      * @param detailRows	list of accumulating table rows
      */
@@ -296,58 +215,26 @@ public class EvalDeepReporter extends EvalHtmlReporter {
      * @param gReport	quality report on the genome of interest
      */
     protected void advancedGenomeSetup(GenomeStats gReport) {
-        if (this.refGenomeOverride != null) {
-            // In override mode we use the same genome every time, but we need to make sure it is not the
-            // genome we're evaluating.
-            this.refGenomeId = this.refGenomeOverride;
-            if (this.refGenomeId.contentEquals(gReport.getId())) {
-                log.info("Genome {} is a reference to itself.  No useful data is available.", this.refGenomeId);
-                this.refGenomeId = null;
+        // Compute the reference genome.
+        this.refGenomeObj = this.refEngine.ref(gReport.getId());
+        if (this.refGenomeObj != null) {
+            this.refGenomeId = this.refGenomeObj.getId();
+            log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
+            // Create the problematic role directory.
+            Set<String> targetRoles = gReport.getProblematicRoles();
+            this.featureFinder = new HashMap<String, KmerCollectionGroup>(targetRoles.size());
+            for (String role : targetRoles) {
+                featureFinder.put(role, new KmerCollectionGroup());
             }
-        } else {
-            // Here we need to compute a reference. Get the seed protein.
-            String seedProt = gReport.getSeed();
-            // Find the closest genome in the reference genome database.
-            log.info("Computing reference genome for {}: {}", gReport.getId(), gReport.getName());
-            KmerCollectionGroup.Result refGenomeData = this.referenceGenomes.getBest(seedProt);
-            this.refGenomeDistance = refGenomeData.getDistance();
-            this.refGenomeId = refGenomeData.getGroup();
-            if (this.refGenomeId == null) {
-                log.info("No reference genome found for {}.", gReport.getId());
-            } else if (this.refGenomeDistance > MAX_GENOME_DIST) {
-                log.info("Reference genome {} found, but distance of {} exceeds the maximum of {}.", this.refGenomeId, this.refGenomeDistance, MAX_GENOME_DIST);
-                this.refGenomeId = null;
-            } else if (this.refGenomeId.contentEquals(gReport.getId())) {
-                log.info("Genome {} is a reference to itself.  No useful data is available.", this.refGenomeId);
-                this.refGenomeId = null;
-            } else {
-                // Read in the genome.
-                P3Genome refGenome = P3Genome.Load(p3, this.refGenomeId, P3Genome.Details.PROTEINS);
-                if (refGenome == null) {
-                    log.error("Reference genome {} not found in PATRIC.", this.refGenomeId);
-                    this.refGenomeId = null;
-                    this.refGenomeObj = null;
-                } else {
-                    // Here we can use the reference genome.
-                    this.refGenomeObj = refGenome;
-                    log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
-                    // Create the problematic role directory.
-                    Set<String> targetRoles = gReport.getProblematicRoles();
-                    this.featureFinder = new HashMap<String, KmerCollectionGroup>(targetRoles.size());
-                    for (String role : targetRoles) {
-                        featureFinder.put(role, new KmerCollectionGroup());
-                    }
-                    // Get the role definitions.
-                    RoleMap roleMap = this.getRoleMap();
-                    // Loop through the features, putting them in the directory.
-                    for (Feature feat : refGenome.getPegs()) {
-                        Collection<Role> roles = feat.getUsefulRoles(roleMap);
-                        for (Role role : roles) {
-                            KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
-                            if (roleGroup != null)
-                                roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
-                        }
-                    }
+            // Get the role definitions.
+            RoleMap roleMap = this.getRoleMap();
+            // Loop through the features, putting them in the directory.
+            for (Feature feat : this.refGenomeObj.getPegs()) {
+                Collection<Role> roles = feat.getUsefulRoles(roleMap);
+                for (Role role : roles) {
+                    KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
+                    if (roleGroup != null)
+                        roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
                 }
             }
         }
@@ -363,21 +250,30 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     }
 
     /**
-     * Specify an override reference genome ID.
-     *
-     * @param refGenomeId	ID of the reference genome to be used for all reports
-     */
-    public void setRefGenomeOverride(String refGenomeId) {
-        this.refGenomeOverride = refGenomeId;
-    }
-
-
-    /**
      * Set the maximum protein distance for the protein comparisons.
      *
      * @param newDistance	new maximum distance
      */
     public void setSensitivity(double newDistance) {
         this.maxProtDist = newDistance;
+    }
+
+    /**
+     * Specify the engine for computing reference genomes.
+     *
+     * @param refEngine		object for computing reference genome IDs
+     */
+    public void setEngine(RefGenomeComputer refEngine) {
+        this.refEngine = refEngine;
+    }
+
+    /**
+     * Initialize the reference genome engine for this batch
+     *
+     * @param reports	array of evaluated genomes
+     */
+    @Override
+    protected void setupGenomes(GenomeStats[] reports) {
+        this.refEngine.setupReferences(reports);
     }
 }

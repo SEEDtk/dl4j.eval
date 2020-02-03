@@ -36,7 +36,8 @@ import org.theseed.utils.ICommand;
  * --terse		do not write the individual output files, only the summary
  * --clear		clear the output directory before processing
  * --format		specify the output format-- HTML, DEEP, or TEXT
- * --ref		ID of a reference genome to use for all the evaluation reports
+ * --ref		name of a tab-delimited file containing GTOs to use as reference genomes; the taxonomic ID
+ * 				should be in the first column and a GTO file name in the second
  *
  * @author Bruce Parrello
  *

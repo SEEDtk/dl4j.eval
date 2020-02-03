@@ -38,7 +38,6 @@ import org.theseed.utils.ICommand;
  *
  * --terse		do not write the individual output files, only the summary
  * --clear		clear the output directory before processing
- * --ref		ID of a reference genome to use for all the evaluation reports
  *
  * @author Bruce Parrello
  *

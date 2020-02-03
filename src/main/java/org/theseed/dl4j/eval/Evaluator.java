@@ -51,9 +51,6 @@ public class Evaluator {
 
     // FIELDS
 
-    /** value used to specify no reference genome */
-    private static final String NO_REF_GENOME = "computed";
-
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(EvalProcessor.class);
     /** array of roles to use */
@@ -103,10 +100,6 @@ public class Evaluator {
     @Option(name = "--format", usage = "format for output reports")
     private EvalReporter.Type format;
 
-    /** override reference genome */
-    @Option(name = "--ref", usage = "reference genome for deep evaluation reports")
-    private String refGenomeId;
-
     /** sensitivity of protein comparison on reports */
     @Option(name = "-s", aliases = { "--sensitivity" }, metaVar = "0.9", usage = "maximum distance for a close protein")
     private double sensitivity;
@@ -114,6 +107,10 @@ public class Evaluator {
     /** output directory */
     @Option(name = "-O", aliases = { "--outDir" }, metaVar = "outDir", usage = "output directory")
     private File outDir;
+
+    /** file of reference genome GTO mappings */
+    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
+    private File refGenomeFile;
 
     /** model directory */
     @Argument(index = 0, metaVar = "modelDir", usage = "model directory", required = true)
@@ -131,7 +128,6 @@ public class Evaluator {
         this.outDir = new File(System.getProperty("user.dir"));
         this.format = EvalReporter.Type.TEXT;
         this.sensitivity = 0.8;
-        this.refGenomeId = NO_REF_GENOME;
     }
 
     /**
@@ -172,7 +168,7 @@ public class Evaluator {
             }
             log.info("Output will be in directory {}.", this.outDir);
             // Create the reporting object.
-            this.reporter = EvalReporter.Create(this.outDir, this.format);
+            this.reporter = EvalReporter.create(this.outDir, this.format);
             // Check for terse mode.
             if (this.terse)
                 this.reporter.setOption(EvalReporter.Option.NODETAILS);
@@ -183,9 +179,12 @@ public class Evaluator {
                     throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
                 // Set the special parameters.
                 EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
-                if (! this.refGenomeId.contentEquals(NO_REF_GENOME))
-                    deepReporter.setRefGenomeOverride(this.refGenomeId);
                 deepReporter.setSensitivity(this.sensitivity);
+                if (this.refGenomeFile != null) {
+                    deepReporter.setEngine(new FileRefGenomeComputer(this.refGenomeFile));
+                } else {
+                    deepReporter.setEngine(new PatricRefGenomeComputer(this.modelDir));
+                }
             }
             retVal = true;
         }
@@ -347,11 +346,14 @@ public class Evaluator {
      * @throws IOException
      */
     protected void writeOutput() throws IOException {
-        log.info("Writing output for batch.");
+        log.info("Writing output.");
         // If this is our first time, initialize the reports.
         if (this.gCount == this.nGenomes) {
             this.reporter.open(this.version, this.roleDefinitions, this.modelDir);
         }
+        // Set up the reference genomes.
+        this.reporter.setupGenomes(this.reports);
+        // Write the output.
         for (int g = 0; g < this.nGenomes; g++) {
             GenomeStats gReport = this.reports[g];
             this.reporter.writeGenome(gReport);

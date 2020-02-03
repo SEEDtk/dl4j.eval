@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -34,6 +36,37 @@ import static j2html.TagCreator.*;
  *
  */
 public class EvalHtmlReporter extends EvalReporter {
+
+    /**
+      * Subclass for sorting genomes by score and then ID.
+      */
+    protected static class EvalSorter implements Comparable<EvalSorter> {
+
+        public static final EvalSorter HEADER = new EvalSorter();
+
+        private double score;
+        private String id;
+
+        public EvalSorter(GenomeStats gReport) {
+            this.score = gReport.getScore();
+            this.id = gReport.getId();
+        }
+
+        public EvalSorter() {
+            this.score = Double.POSITIVE_INFINITY;
+            this.id = "";
+        }
+
+        @Override
+        public int compareTo(EvalSorter other) {
+            // Sort descending by score, then ascending by name.
+            int retVal = Double.compare(other.score, this.score);
+            if (retVal == 0)
+                retVal = this.id.compareTo(other.id);
+            return retVal;
+        }
+
+    }
 
     private static final String CSS_HREF = "https://patricbrc.org/js/3.6.2/p3/resources/p3.css";
 
@@ -106,9 +139,9 @@ public class EvalHtmlReporter extends EvalReporter {
      // FIELDS
 
     /** list of good genome table rows */
-    ArrayList<DomContent> goodRows;
+    SortedMap<EvalSorter, DomContent> goodRows;
     /** list of bad genome table rows */
-    ArrayList<DomContent> badRows;
+    SortedMap<EvalSorter, DomContent> badRows;
     /** map of contig comments */
     Map<String, ContigAnalysis> contigMap;
 
@@ -126,8 +159,8 @@ public class EvalHtmlReporter extends EvalReporter {
     @Override
     protected void startSummary() throws IOException {
         // Create the two accumulating tables.
-        this.goodRows = new ArrayList<DomContent>();
-        this.badRows = new ArrayList<DomContent>();
+        this.goodRows = new TreeMap<EvalSorter, DomContent>();
+        this.badRows = new TreeMap<EvalSorter, DomContent>();
         // Put a header on each.
         DomContent headerRow = tr(
                 th("Score").withClass("num"),
@@ -144,8 +177,8 @@ public class EvalHtmlReporter extends EvalReporter {
                 th("Good Phes").withClass("flag"),
                 th("Quality").withClass("flag")
             );
-        this.goodRows.add(headerRow);
-        this.badRows.add(headerRow);
+        this.goodRows.put(EvalSorter.HEADER, headerRow);
+        this.badRows.put(EvalSorter.HEADER, headerRow);
     }
 
     /**
@@ -493,9 +526,9 @@ public class EvalHtmlReporter extends EvalReporter {
                 flagCell(gReport.isGood(), "Good", "Poor")
             );
         if (gReport.isGood())
-            this.goodRows.add(detailRow);
+            this.goodRows.put(new EvalSorter(gReport), detailRow);
         else
-            this.badRows.add(detailRow);
+            this.badRows.put(new EvalSorter(gReport), detailRow);
     }
 
     @Override
@@ -506,8 +539,8 @@ public class EvalHtmlReporter extends EvalReporter {
         int bad = total - good;
         DomContent countNotes = formatCounts();
         // Create genome tables.
-        DomContent goodRegion = (good == 0 ? p() : formatTable("Good Genomes", goodRows));
-        DomContent badRegion = (bad == 0 ? p() : formatTable("Poor Genomes", badRows));
+        DomContent goodRegion = (good == 0 ? p() : formatTable("Good Genomes", goodRows.values()));
+        DomContent badRegion = (bad == 0 ? p() : formatTable("Poor Genomes", badRows.values()));
         // Here we render the whole page.
         String page = html(
                 head(
@@ -549,12 +582,12 @@ public class EvalHtmlReporter extends EvalReporter {
     /**
      * @return a table created from the specified detail rows
      *
-     * @param tableRows		rows to put in the table
+     * @param collection		rows to put in the table
      */
-    protected DomContent formatTable(String header, ArrayList<DomContent> tableRows) {
+    protected DomContent formatTable(String header, Collection<DomContent> collection) {
         return join(
                 h2(header),
-                div(table().with(tableRows.stream()).withClass(TABLE_CLASS + " striped")).withClass("wrapper")
+                div(table().with(collection.stream()).withClass(TABLE_CLASS + " striped")).withClass("wrapper")
             );
     }
 
@@ -634,6 +667,10 @@ public class EvalHtmlReporter extends EvalReporter {
      */
     protected DomContent featureLink(String fid) {
         return a(fid).withHref(String.format(FEATURE_VIEW_LINK, fid)).withTarget("_blank");
+    }
+
+    @Override
+    protected void setupGenomes(GenomeStats[] reports) {
     }
 
 }

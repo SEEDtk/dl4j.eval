@@ -90,7 +90,7 @@ public abstract class EvalReporter implements AutoCloseable {
      *
      * @return a reporter object for the specified output
      */
-    public static EvalReporter Create(File outDir, Type type) {
+    public static EvalReporter create(File outDir, Type type) {
         EvalReporter retVal;
         switch (type) {
         case TEXT :
@@ -320,5 +320,12 @@ public abstract class EvalReporter implements AutoCloseable {
     public P3Genome.Details getDetailLevel() {
         return P3Genome.Details.STRUCTURE_ONLY;
     }
+
+    /**
+     * Perform special setup for the specified batch of evaluated genomes.
+     *
+     * @param reports	array of genome evaluations
+     */
+    protected abstract void setupGenomes(GenomeStats[] reports);
 
 }
