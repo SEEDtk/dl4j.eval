@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,7 +41,7 @@ public class EvalHtmlReporter extends EvalReporter {
 
     private static final String INT_FORMAT = "%d";
 
-    private static final String TABLE_CLASS = "p3basic";
+    protected static final String TABLE_CLASS = "p3basic";
 
     private static final String BODY_CLASS = "claro";
 
@@ -294,8 +295,8 @@ public class EvalHtmlReporter extends EvalReporter {
         detailRow(detailRows, "Underpresent Roles", numCell(underCount));
         detailRow(detailRows, "CDS Features", numCell(gReport.getPegCount()));
         detailRow(detailRows, "CDS Features in Local Protein Families", numCell(gReport.getPlfamCount()));
-        detailRow(detailRows, "CDS Features with annotation", numCell(gReport.getHypoCount()));
-        detailRow(detailRows, "CDS Features without annotation", numCell(gReport.getPegCount() - gReport.getHypoCount()));
+        detailRow(detailRows, "CDS Features without annotation", numCell(gReport.getHypoCount()));
+        detailRow(detailRows, "CDS Features with annotation", numCell(gReport.getPegCount() - gReport.getHypoCount()));
         detailRow(detailRows, "Coarse Consistency %", numCell(gReport.getCoarsePercent()));
         detailRow(detailRows, "Fine Consistency %", colorCell(gReport.isConsistent(), gReport.getFinePercent()));
         detailRow(detailRows, "Completeness %", colorCell(gReport.isComplete(), gReport.getCompletePercent()));
@@ -470,7 +471,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param label		label for the row
      * @param cell			table cell with the data
      */
-    protected void detailRow(ArrayList<DomContent> detailRows, String label, ContainerTag cell) {
+    protected void detailRow(List<DomContent> detailRows, String label, ContainerTag cell) {
         detailRows.add(tr(th(label), cell));
     }
 

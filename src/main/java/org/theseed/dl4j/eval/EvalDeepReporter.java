@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
+import org.theseed.genome.Compare;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.p3api.Connection;
@@ -52,6 +53,8 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     private String refGenomeOverride;
     /** protein sensitivity */
     private double maxProtDist;
+    /** genome comparator */
+    private Compare compareObj;
 
     /** maximum acceptable distance for a reference genome */
     private static final double MAX_GENOME_DIST = 0.8;
@@ -67,6 +70,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
         this.refGenomeOverride = null;
         this.refGenomeObj = null;
         this.maxProtDist = MAX_GENOME_DIST;
+        this.compareObj = new Compare();
     }
 
     /**
@@ -104,30 +108,37 @@ public class EvalDeepReporter extends EvalHtmlReporter {
         } else {
             // We are in override mode. Read in the override genome.
             this.p3 = new Connection();
-            P3Genome refGenome = P3Genome.Load(p3, this.refGenomeOverride, P3Genome.Details.PROTEINS);
-            if (refGenome == null) {
-                throw new IllegalArgumentException("Reference genome " + this.refGenomeOverride + " not found in PATRIC.");
+            Genome refGenome;
+            if (this.refGenomeOverride.contains(".gto")) {
+                // Here the genome is in a GTO file.
+                File gFile = new File(this.refGenomeOverride);
+                log.info("Reading reference genome from " + gFile.getAbsolutePath());
+                refGenome = new Genome(gFile);
+                this.refGenomeOverride = refGenome.getId();
             } else {
-                // Here we can use the reference genome.
-                this.refGenomeId = refGenomeOverride;
-                this.refGenomeObj = refGenome;
-                log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
-                // Create the problematic role directory.
-                this.featureFinder = new HashMap<String, KmerCollectionGroup>();
-                // Get the role definitions.  Note we are going to save all the roles, not just the problematic ones,
-                // because we are re-using this genome.
-                RoleMap roleMap = this.getRoleMap();
-                // Loop through the features, putting them in the directory.
-                for (Feature feat : refGenome.getPegs()) {
-                    Collection<Role> roles = feat.getUsefulRoles(roleMap);
-                    for (Role role : roles) {
-                        KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
-                        if (roleGroup == null) {
-                            roleGroup = new KmerCollectionGroup();
-                            this.featureFinder.put(role.getId(), roleGroup);
-                        }
-                        roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
+                refGenome = P3Genome.Load(p3, this.refGenomeOverride, P3Genome.Details.PROTEINS);
+                if (refGenome == null)
+                    throw new IllegalArgumentException("Reference genome " + this.refGenomeOverride + " not found in PATRIC.");
+            }
+            // Here we can use the reference genome.
+            this.refGenomeId = refGenomeOverride;
+            this.refGenomeObj = refGenome;
+            log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
+            // Create the problematic role directory.
+            this.featureFinder = new HashMap<String, KmerCollectionGroup>();
+            // Get the role definitions.  Note we are going to save all the roles, not just the problematic ones,
+            // because we are re-using this genome.
+            RoleMap roleMap = this.getRoleMap();
+            // Loop through the features, putting them in the directory.
+            for (Feature feat : refGenome.getPegs()) {
+                Collection<Role> roles = feat.getUsefulRoles(roleMap);
+                for (Role role : roles) {
+                    KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
+                    if (roleGroup == null) {
+                        roleGroup = new KmerCollectionGroup();
+                        this.featureFinder.put(role.getId(), roleGroup);
                     }
+                    roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
                 }
             }
         }
@@ -168,9 +179,24 @@ public class EvalDeepReporter extends EvalHtmlReporter {
             tableRows.add(compareTableRow("Features with hypothetical proteins", newCounts.getHypoCount(), refCounts.getHypoCount()));
             tableRows.add(compareTableRow("Features performing subsystem-related roles", newCounts.getKnownCount(), refCounts.getKnownCount()));
             tableRows.add(compareTableRow("Features performing one of the roles used in this evaluation",
-                    newCounts.getFidCount(), refCounts.getFidCount()));
+                    newCounts.getUsefulCount(), refCounts.getUsefulCount()));
             retVal = formatTable("Comparison of " + gReport.getId() + " with Reference Genome " + this.refGenomeId,
                     tableRows);
+            // Check to see if we can do a comparison report.
+            boolean comparable = this.compareObj.compare(gReport.getGenome(), this.refGenomeObj);
+            if (comparable) {
+                // Create the ORF comparison report.
+                tableRows.clear();
+                this.detailRow(tableRows, "Number of ORFs only annotated in the reference genome", this.numCell(this.compareObj.getOldOnly()));
+                this.detailRow(tableRows, "Number of ORFs only annotated in this genome", this.numCell(this.compareObj.getNewOnly()));
+                this.detailRow(tableRows, "Number of ORFs annotated in both genomes", numCell(this.compareObj.getCommon()));
+                this.detailRow(tableRows, "Number of ORFs annotated in both genomes with identical functions and lengths", numCell(this.compareObj.getIdentical()));
+                this.detailRow(tableRows, "Number of ORFs annotated in both genomes, but with different functions", numCell(this.compareObj.getDifferentFunctions()));
+                this.detailRow(tableRows, "Number of identically-annotated ORFs whose proteins are longer in the reference genome", numCell(this.compareObj.getShorter()));
+                this.detailRow(tableRows, "Number of identically-annotated ORFs whose proteins are longer in this genome", numCell(this.compareObj.getLonger()));
+                retVal = join(retVal, h2("Comparison of Annotation Results by Open Reading Frame"),
+                        div(table().with(tableRows.stream()).withClass(TABLE_CLASS)).withClass("shrinker"));
+            }
         }
         return retVal;
     }
