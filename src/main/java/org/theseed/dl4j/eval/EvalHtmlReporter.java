@@ -516,15 +516,13 @@ public class EvalHtmlReporter extends EvalReporter {
                     style(EXTRA_STYLES).withType("text/css")
                 ),
                 body(
-                    div(
-                        h1("Evaluation Summary Report"),
-                        p(String.format("%d genomes processed using evaluator version %s. %d good and %d poor.",
-                                this.getGenomeCount(), this.getVersion(), good, bad)),
-                        countNotes,
-                        goodRegion,
-                        badRegion
-                    ).withClass(BODY_CLASS)
-                )
+                    h1("Evaluation Summary Report"),
+                    p(String.format("%d genomes processed using evaluator version %s. %d good and %d poor.",
+                            this.getGenomeCount(), this.getVersion(), good, bad)),
+                    countNotes,
+                    goodRegion,
+                    badRegion
+                ).withClass(BODY_CLASS)
             ).render();
         File summaryFile = new File(this.getOutDir(), "index.html");
         FileUtils.writeStringToFile(summaryFile, page, "UTF-8");
