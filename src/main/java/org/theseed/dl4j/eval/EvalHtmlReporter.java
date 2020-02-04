@@ -541,6 +541,7 @@ public class EvalHtmlReporter extends EvalReporter {
         // Create genome tables.
         DomContent goodRegion = (good == 0 ? p() : formatTable("Good Genomes", goodRows.values()));
         DomContent badRegion = (bad == 0 ? p() : formatTable("Poor Genomes", badRows.values()));
+        DomContent extraRegion = this.advancedSummaryReport();
         // Here we render the whole page.
         String page = html(
                 head(
@@ -554,11 +555,19 @@ public class EvalHtmlReporter extends EvalReporter {
                             this.getGenomeCount(), this.getVersion(), good, bad)),
                     countNotes,
                     goodRegion,
-                    badRegion
+                    badRegion,
+                    extraRegion
                 ).withClass(BODY_CLASS)
             ).render();
         File summaryFile = new File(this.getOutDir(), "index.html");
         FileUtils.writeStringToFile(summaryFile, page, "UTF-8");
+    }
+
+    /**
+     * Subclasses can use this to add extra content to the summary page.
+     */
+    protected DomContent advancedSummaryReport() {
+        return null;
     }
 
     /**

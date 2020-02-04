@@ -4,9 +4,11 @@
 package org.theseed.dl4j.eval;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -44,6 +46,8 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     private double maxProtDist;
     /** genome comparator */
     private Compare compareObj;
+    /** orf report */
+    private List<DomContent> orfReportRows;
 
     /**
      * Construct a deep HTML reporting object.
@@ -73,6 +77,17 @@ public class EvalDeepReporter extends EvalHtmlReporter {
         if (this.refGenomeId != null) {
             this.detailRow(detailRows, "Reference Genome", td(join(genomeLink(this.refGenomeId), refGenomeName())));
         }
+    }
+
+    /**
+     * Here we set up the array to contain the ORF report rows.
+     */
+    @Override
+    protected void initialize(File modelDir) throws IOException {
+        super.initialize(modelDir);
+        this.orfReportRows = new ArrayList<DomContent>();
+        this.orfReportRows.add(tr(th("Genome ID"), th("Genome Name"), th("Ref Genome"), th("Subsystem Score").withClass("num"),
+                th("Annotation Score").withClass("num"), th("Function Score").withClass("num"), th("False Positive Rate").withClass("num")));
     }
 
     /**
@@ -115,6 +130,20 @@ public class EvalDeepReporter extends EvalHtmlReporter {
                 this.detailRow(tableRows, "Number of identically-annotated ORFs whose proteins are longer in this genome", numCell(this.compareObj.getLonger()));
                 retVal = join(retVal, h2("Comparison of Annotation Results by Open Reading Frame"),
                         div(table().with(tableRows.stream()).withClass(TABLE_CLASS)).withClass("shrinker"));
+                // Add a report row for this genome to the master ORF report.  We make a safety check in case the reference
+                // genome is terrible and would cause a divide-by-0 error.
+                double denominator = refCounts.getPegCount();
+                if (denominator > 0 && refCounts.getKnownCount() > 0) {
+                    DomContent orfRow = tr(
+                            td(genomeLink(gReport.getId())),
+                            td(gPageLink(gReport.getId(), gReport.getName())),
+                            td(genomeLink(this.refGenomeId)),
+                            numCell(newCounts.getKnownCount() * 100 / (double) refCounts.getKnownCount()),
+                            numCell(this.compareObj.getIdentical() * 100 / denominator),
+                            numCell((this.compareObj.getIdentical() + this.compareObj.getShorter() + this.compareObj.getLonger()) * 100 / denominator),
+                            numCell(this.compareObj.getNewOnly() * 100 / denominator));
+                    this.orfReportRows.add(orfRow);
+                }
             }
         }
         return retVal;
@@ -217,7 +246,9 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     protected void advancedGenomeSetup(GenomeStats gReport) {
         // Compute the reference genome.
         this.refGenomeObj = this.refEngine.ref(gReport.getId());
-        if (this.refGenomeObj != null) {
+        if (this.refGenomeObj == null) {
+            this.refGenomeId = null;
+        } else {
             this.refGenomeId = this.refGenomeObj.getId();
             log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
             // Create the problematic role directory.
@@ -241,6 +272,18 @@ public class EvalDeepReporter extends EvalHtmlReporter {
         // Finally, initialize the close-feature map.
         this.closeFeatureMap = new HashMap<String, String>();
     }
+
+    /**
+     * Add the ORF report to the summary page.
+     */
+    @Override
+    protected DomContent advancedSummaryReport() {
+        DomContent retVal = null;
+        if (this.orfReportRows.size() > 1)
+            retVal = formatTable("ORF Comparison Summary", this.orfReportRows);
+        return retVal;
+    }
+
 
     /**
      * @return the name of the current reference genome

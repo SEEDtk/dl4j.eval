@@ -43,9 +43,12 @@ public class FileRefGenomeComputer extends RefGenomeComputer {
         try (TabbedLineReader refFile = new TabbedLineReader(refGenomeFile, 2)) {
             for (TabbedLineReader.Line line : refFile) {
                 String taxId = line.get(0);
-                File gtoFile = new File(baseDir, line.get(1));
-                Genome gto = new Genome(gtoFile);
-                this.refMap.put(taxId, gto);
+                // Only proceed if this is NOT a blank line.
+                if (! taxId.isEmpty()) {
+                    File gtoFile = new File(baseDir, line.get(1));
+                    Genome gto = new Genome(gtoFile);
+                    this.refMap.put(taxId, gto);
+                }
             }
         }
         log.info("Reference genomes provided for {} taxonomic groups.", this.refMap.size());
