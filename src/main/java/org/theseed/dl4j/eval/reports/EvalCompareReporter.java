@@ -124,6 +124,12 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
                     }
                 }
                 DomContent fpTable = EvalHtmlReporter.formatTable("Proteins Only in This Genome", tableRows);
+                // Add some more comparison data to the quality rows.
+                EvalHtmlReporter.detailRow(qualityRows, "Number of correctly-called functions",
+                        EvalHtmlReporter.numCell(compareObj.getIdentical()+compareObj.getLonger()+compareObj.getShorter()));
+                EvalHtmlReporter.detailRow(qualityRows, "Number of differing functions", EvalHtmlReporter.numCell(compareObj.getDifferentFunctions()));
+                EvalHtmlReporter.detailRow(qualityRows, "Number of false positives", EvalHtmlReporter.numCell(compareObj.getNewOnlyCount()));
+                EvalHtmlReporter.detailRow(qualityRows, "Number of false negatives", EvalHtmlReporter.numCell(compareObj.getOldOnlyCount()));
                 EvalHtmlReporter.detailRow(qualityRows, "Minimum evidence for found ORFs", EvalHtmlReporter.numCell(minEvidence));
                 EvalHtmlReporter.detailRow(qualityRows, "Minimum strength for found ORFs", EvalHtmlReporter.numCell(minStrength * 3));
                 // Now, the false negatives, again sorted by function.
@@ -156,7 +162,7 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
                 headerRow.add(th(rawHtml("&nbsp;")));
                 dataRow.add(th("Strength Counts"));
                 for (int i = 0; i < 10; i++) {
-                    headerRow.add(th(String.format("0.%d to < 0.%d", i, i+1)).withClass("num"));
+                    headerRow.add(th(String.format("%3.1f to < %3.1f", i / 10.0, (i+1)/10.0)).withClass("num"));
                     dataRow.add(EvalHtmlReporter.numCell(strengthByP1Count[i]));
                 }
                 trackers = join(trackers, div(table().with(tr(each(headerRow.stream()))).with(tr(each(dataRow.stream())))
