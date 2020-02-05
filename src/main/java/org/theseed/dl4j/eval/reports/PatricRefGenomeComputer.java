@@ -1,13 +1,14 @@
 /**
  *
  */
-package org.theseed.dl4j.eval;
+package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.p3api.Connection;
 import org.theseed.p3api.P3Genome;

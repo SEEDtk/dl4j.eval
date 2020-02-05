@@ -1,13 +1,15 @@
 /**
  *
  */
-package org.theseed.dl4j.eval;
+package org.theseed.dl4j.eval.reports;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.dl4j.eval.EvalProcessor;
+import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.genome.Genome;
 
 /**

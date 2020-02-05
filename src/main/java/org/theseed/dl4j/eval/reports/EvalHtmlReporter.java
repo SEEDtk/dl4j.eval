@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.dl4j.eval;
+package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
@@ -16,8 +16,11 @@ import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.theseed.dl4j.eval.ContigAnalysis;
+import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
 import org.theseed.dl4j.eval.GenomeStats.ProblematicRole;
+import org.theseed.genome.Compare;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -68,17 +71,17 @@ public class EvalHtmlReporter extends EvalReporter {
 
     }
 
-    private static final String CSS_HREF = "https://patricbrc.org/js/3.6.2/p3/resources/p3.css";
+    public static final String CSS_HREF = "https://patricbrc.org/js/3.6.2/p3/resources/p3.css";
 
     private static final String NUM_FORMAT = "%-8.2f";
 
     private static final String INT_FORMAT = "%d";
 
-    protected static final String TABLE_CLASS = "p3basic";
+    public static final String TABLE_CLASS = "p3basic";
 
-    private static final String BODY_CLASS = "claro";
+    public static final String BODY_CLASS = "claro";
 
-    private static final String EXTRA_STYLES = "	table." + TABLE_CLASS + " th {\n" +
+    public static final String EXTRA_STYLES = "	table." + TABLE_CLASS + " th {\n" +
             "		background-color: #c8c8c8;\n" +
             "	}\n" +
             "	table." + TABLE_CLASS + " th.num, table." + TABLE_CLASS + " td.num {\n" +
@@ -187,7 +190,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param flag	TRUE if the value is good, else FALSE
      * @param str	text to display
      */
-    protected ContainerTag colorCell(boolean flag, String str) {
+    public static ContainerTag colorCell(boolean flag, String str) {
         DomContent cell;
         if (str.isEmpty())
             cell = rawHtml("&nbsp;");
@@ -205,7 +208,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param fid id of the target feature
      */
-    protected DomContent featureRegionLink(String fid) {
+    public static DomContent featureRegionLink(String fid) {
         return a(fid).withHref(String.format(FEATURE_CR_LINK, fid))
                 .withTarget("_blank");
     }
@@ -215,7 +218,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param genome_id		ID of the target genome
      */
-    protected DomContent genomeLink(String genome_id) {
+    public static DomContent genomeLink(String genome_id) {
         return a(genome_id).withHref(String.format(GENOME_LINK_FMT, genome_id)).withTarget("_blank");
     }
 
@@ -225,7 +228,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param genome_id		ID of the target genome
      * @param text			text for the link
      */
-    protected DomContent gPageLink(String genome_id, String text) {
+    public static DomContent gPageLink(String genome_id, String text) {
         return a(text).withHref(String.format(PAGE_LINK_FMT, genome_id));
     }
 
@@ -235,7 +238,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param flag	TRUE if the value is good, else FALSE
      * @param val	floating-point value to display
      */
-    protected ContainerTag colorCell(boolean flag, double val) {
+    public static ContainerTag colorCell(boolean flag, double val) {
         return colorCell(flag, num(val)).withClass("num");
     }
 
@@ -244,7 +247,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param val	floating-point value to display
      */
-    protected ContainerTag numCell(double val) {
+    public static ContainerTag numCell(double val) {
         return td(num(val)).withClass("num");
     }
 
@@ -253,7 +256,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param val	floating-point value to display
      */
-    protected ContainerTag numCell(int val) {
+    public static ContainerTag numCell(int val) {
         return td(num(val)).withClass("num");
     }
 
@@ -264,9 +267,9 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param trueText	text to display if the flag is TRUE
      * @param falseText	test to display if the flag is FALSE
      */
-    protected ContainerTag flagCell(boolean flag, String trueText, String falseText) {
+    public static ContainerTag flagCell(boolean flag, String trueText, String falseText) {
         String text = (flag ? trueText : falseText);
-        ContainerTag retVal = this.colorCell(flag, text);
+        ContainerTag retVal = colorCell(flag, text);
         return retVal.withClass("flag");
     }
 
@@ -274,7 +277,7 @@ public class EvalHtmlReporter extends EvalReporter {
     protected void writeDetails(GenomeStats gReport) throws IOException {
         // Get the genome ID and compute the output file name.
         String genomeId = gReport.getId();
-        File outFile = new File(this.getOutDir(), genomeId + ".html");
+        File outFile = this.htmlFile(genomeId);
         // Determine if we're good or poor and get the genome name.
         String rating = (gReport.isGood() ? "good" : "poor");
         String seedRating = (gReport.isGoodSeed() ? "good" : "missing or invalid");
@@ -315,28 +318,9 @@ public class EvalHtmlReporter extends EvalReporter {
         // Ask the subclass for any additional rows.
         advancedDetailRows(detailRows);
         // Fill in all the quality-data statistic rows.
-        detailRow(detailRows, "Completeness Group", td(gReport.getGroup()));
-        detailRow(detailRows, "Domain", td(gReport.getDomain()));
-        detailRow(detailRows, "DNA size (base pairs)", numCell(gReport.getDnaSize()));
-        detailRow(detailRows, "Number of Contigs", numCell(gReport.getContigCount()));
-        detailRow(detailRows, "Contig L50", numCell(gReport.getL50()));
-        detailRow(detailRows, "Contig N50", numCell(gReport.getN50()));
-        detailRow(detailRows, "Consistency Roles", numCell(gReport.getConsistencyRoleCount()));
-        detailRow(detailRows, "Completeness Roles", numCell(gReport.getCompletenessRoleCount()));
-        detailRow(detailRows, "Shared Completeness / Consistency Roles", numCell(gReport.getCommonRoleCount()));
+        qualityRows(gReport, detailRows);
         detailRow(detailRows, "Overpresent Roles", numCell(overCount));
         detailRow(detailRows, "Underpresent Roles", numCell(underCount));
-        detailRow(detailRows, "CDS Features", numCell(gReport.getPegCount()));
-        detailRow(detailRows, "CDS Features in Local Protein Families", numCell(gReport.getPlfamCount()));
-        detailRow(detailRows, "CDS Features without annotation", numCell(gReport.getHypoCount()));
-        detailRow(detailRows, "CDS Features with annotation", numCell(gReport.getPegCount() - gReport.getHypoCount()));
-        detailRow(detailRows, "Coarse Consistency %", numCell(gReport.getCoarsePercent()));
-        detailRow(detailRows, "Fine Consistency %", colorCell(gReport.isConsistent(), gReport.getFinePercent()));
-        detailRow(detailRows, "Completeness %", colorCell(gReport.isComplete(), gReport.getCompletePercent()));
-        detailRow(detailRows, "Contamination %", colorCell(gReport.isClean(), gReport.getContaminationPercent()));
-        detailRow(detailRows, "CDS Coverage %", numCell(gReport.getCdsPercent()));
-        detailRow(detailRows, "Hypothetical Protein %", colorCell(gReport.isUnderstood(), gReport.getHypotheticalPercent()));
-        detailRow(detailRows, "% CDS Features in Local Protein Families", numCell(gReport.getPlfamPercent()));
         // Ask for extra tables.
         DomContent extraHtml = this.advancedGenomeAnalysis(gReport);
         // Format the page.
@@ -357,6 +341,35 @@ public class EvalHtmlReporter extends EvalReporter {
                 ).withClass(BODY_CLASS)
             ).render();
         FileUtils.writeStringToFile(outFile, page, "UTF-8");
+    }
+
+    /**
+     * Add the standard quality statistic rows to a table.
+     *
+     * @param gReport		evaluated genome
+     * @param qualityRows	table being built
+     */
+    public static void qualityRows(GenomeStats gReport, List<DomContent> qualityRows) {
+        detailRow(qualityRows, "Completeness Group", td(gReport.getGroup()));
+        detailRow(qualityRows, "Domain", td(gReport.getDomain()));
+        detailRow(qualityRows, "DNA size (base pairs)", numCell(gReport.getDnaSize()));
+        detailRow(qualityRows, "Number of Contigs", numCell(gReport.getContigCount()));
+        detailRow(qualityRows, "Contig L50", numCell(gReport.getL50()));
+        detailRow(qualityRows, "Contig N50", numCell(gReport.getN50()));
+        detailRow(qualityRows, "Consistency Roles", numCell(gReport.getConsistencyRoleCount()));
+        detailRow(qualityRows, "Completeness Roles", numCell(gReport.getCompletenessRoleCount()));
+        detailRow(qualityRows, "Shared Completeness / Consistency Roles", numCell(gReport.getCommonRoleCount()));
+        detailRow(qualityRows, "CDS Features", numCell(gReport.getPegCount()));
+        detailRow(qualityRows, "CDS Features in Local Protein Families", numCell(gReport.getPlfamCount()));
+        detailRow(qualityRows, "CDS Features without annotation", numCell(gReport.getHypoCount()));
+        detailRow(qualityRows, "CDS Features with annotation", numCell(gReport.getPegCount() - gReport.getHypoCount()));
+        detailRow(qualityRows, "Coarse Consistency %", numCell(gReport.getCoarsePercent()));
+        detailRow(qualityRows, "Fine Consistency %", colorCell(gReport.isConsistent(), gReport.getFinePercent()));
+        detailRow(qualityRows, "Completeness %", colorCell(gReport.isComplete(), gReport.getCompletePercent()));
+        detailRow(qualityRows, "Contamination %", colorCell(gReport.isClean(), gReport.getContaminationPercent()));
+        detailRow(qualityRows, "CDS Coverage %", numCell(gReport.getCdsPercent()));
+        detailRow(qualityRows, "Hypothetical Protein %", colorCell(gReport.isUnderstood(), gReport.getHypotheticalPercent()));
+        detailRow(qualityRows, "% CDS Features in Local Protein Families", numCell(gReport.getPlfamPercent()));
     }
 
     /**
@@ -462,7 +475,7 @@ public class EvalHtmlReporter extends EvalReporter {
                 // Get the feature's contig-related comment.
                 DomContent contigComment = contigObject.locationComment(loc);
                 // Form the full feature comment.
-                DomContent featureComment = li(join(this.featureRegionLink(feat.getId()),
+                DomContent featureComment = li(join(featureRegionLink(feat.getId()),
                         iff(loc.getLength() < SHORT_FEATURE, text("is short and")), contigComment,
                         this.advancedFeatureComment(feat, gReport, role)));
                 retVal.with(featureComment);
@@ -504,9 +517,30 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param label		label for the row
      * @param cell			table cell with the data
      */
-    protected void detailRow(List<DomContent> detailRows, String label, ContainerTag cell) {
+    public static void detailRow(List<DomContent> detailRows, String label, ContainerTag cell) {
         detailRows.add(tr(th(label), cell));
     }
+
+    /**
+     * @return a table containing statistics about an ORF comparison
+     *
+     * @param comparison	ORF comparison results
+     * @return
+     */
+    public DomContent compareReport(Compare comparison) {
+        List<DomContent> tableRows = new ArrayList<DomContent>(10);
+        detailRow(tableRows, "Number of ORFs only annotated in the reference genome", numCell(comparison.getOldOnlyCount()));
+        detailRow(tableRows, "Number of ORFs only annotated in this genome", numCell(comparison.getNewOnlyCount()));
+        detailRow(tableRows, "Number of ORFs annotated in both genomes", numCell(comparison.getCommon()));
+        detailRow(tableRows, "Number of ORFs annotated in both genomes with identical functions and lengths", numCell(comparison.getIdentical()));
+        detailRow(tableRows, "Number of ORFs annotated in both genomes, but with different functions", numCell(comparison.getDifferentFunctions()));
+        detailRow(tableRows, "Number of identically-annotated ORFs whose proteins are longer in the reference genome", numCell(comparison.getShorter()));
+        detailRow(tableRows, "Number of identically-annotated ORFs whose proteins are longer in this genome", numCell(comparison.getLonger()));
+        DomContent retVal = join(h2("Comparison of Annotation Results by Open Reading Frame"),
+                div(table().with(tableRows.stream()).withClass(TABLE_CLASS)).withClass("shrinker"));
+        return retVal;
+    }
+
 
     @Override
     protected void writeSummary(GenomeStats gReport) throws IOException {
@@ -575,7 +609,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param val	integer to format
      */
-    protected String num(int val) {
+    public static String num(int val) {
         return String.format(INT_FORMAT, val);
     }
 
@@ -584,7 +618,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param val	floating-point number to format
      */
-    protected String num(double val) {
+    public static String num(double val) {
         return String.format(NUM_FORMAT, val);
     }
 
@@ -593,7 +627,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param collection		rows to put in the table
      */
-    protected DomContent formatTable(String header, Collection<DomContent> collection) {
+    public static DomContent formatTable(String header, Collection<DomContent> collection) {
         return join(
                 h2(header),
                 div(table().with(collection.stream()).withClass(TABLE_CLASS + " striped")).withClass("wrapper")
@@ -679,7 +713,7 @@ public class EvalHtmlReporter extends EvalReporter {
     }
 
     @Override
-    protected void setupGenomes(GenomeStats[] reports) {
+    public void setupGenomes(GenomeStats[] reports) {
     }
 
 }

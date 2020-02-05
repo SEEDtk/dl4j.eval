@@ -18,6 +18,11 @@ import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
+import org.theseed.dl4j.eval.reports.EvalDeepReporter;
+import org.theseed.dl4j.eval.reports.EvalReporter;
+import org.theseed.dl4j.eval.reports.FileRefGenomeComputer;
+import org.theseed.dl4j.eval.reports.IRefReporter;
+import org.theseed.dl4j.eval.reports.PatricRefGenomeComputer;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.io.TabbedLineReader;
@@ -180,10 +185,13 @@ public class Evaluator {
                 // Set the special parameters.
                 EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
                 deepReporter.setSensitivity(this.sensitivity);
+            }
+            if (this.reporter instanceof IRefReporter) {
+                IRefReporter refReporter = (IRefReporter) this.reporter;
                 if (this.refGenomeFile != null) {
-                    deepReporter.setEngine(new FileRefGenomeComputer(this.refGenomeFile));
+                    refReporter.setEngine(new FileRefGenomeComputer(this.refGenomeFile));
                 } else {
-                    deepReporter.setEngine(new PatricRefGenomeComputer(this.modelDir));
+                    refReporter.setEngine(new PatricRefGenomeComputer(this.modelDir));
                 }
             }
             retVal = true;

@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.dl4j.eval;
+package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.TaxItem;
 import org.theseed.io.TabbedLineReader;

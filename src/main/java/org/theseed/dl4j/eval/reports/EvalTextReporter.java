@@ -1,12 +1,14 @@
 /**
  *
  */
-package org.theseed.dl4j.eval;
+package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;
+
+import org.theseed.dl4j.eval.GenomeStats;
 
 /**
  * Here the reports are being produced in tab-delimited files.  The summary report name is "summary" and all files have an extension of ".tsv"
@@ -111,7 +113,7 @@ public class EvalTextReporter extends EvalReporter {
     }
 
     @Override
-    protected void setupGenomes(GenomeStats[] reports) {
+    public void setupGenomes(GenomeStats[] reports) {
     }
 
 }

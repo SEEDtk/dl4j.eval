@@ -23,10 +23,10 @@ public class Compare {
     /** comparator for sorting */
     private Comparator<Feature> orfSorter;
 
-    /** number of ORFS annotated in the old genome but not the new one */
-    private int oldOnly;
-    /** number of ORFs annotated in the new genome but not the old one */
-    private int newOnly;
+    /** ORFS annotated in the old genome but not the new one */
+    private SortedSet<Feature> oldOnly;
+    /** ORFs annotated in the new genome but not the old one */
+    private SortedSet<Feature> newOnly;
     /** number of ORFs identical in both genomes */
     private int identical;
     /** number of ORFs that are commonly annotated but have different functions */
@@ -81,8 +81,8 @@ public class Compare {
             SortedSet<Feature> newOrfs = this.sortFeatures(newGenome);
             SortedSet<Feature> oldOrfs = this.sortFeatures(oldGenome);
             // Clear the counters.
-            this.oldOnly = 0;
-            this.newOnly = 0;
+            this.oldOnly = new TreeSet<Feature>();
+            this.newOnly = new TreeSet<Feature>();
             this.identical = 0;
             this.differentFunctions = 0;
             this.longer = 0;
@@ -91,9 +91,9 @@ public class Compare {
             Iterator<Feature> newIter = newOrfs.iterator();
             Iterator<Feature> oldIter = oldOrfs.iterator();
             if (! newIter.hasNext()) {
-                this.oldOnly = oldOrfs.size();
+                this.oldOnly.addAll(oldOrfs);
             } else if (! oldIter.hasNext()) {
-                this.newOnly = oldOrfs.size();
+                this.newOnly.addAll(newOrfs);
             } else {
                 // We have ORFs to compare. Prime the main loop.
                 Feature oldFeature = newIter.next();
@@ -102,11 +102,11 @@ public class Compare {
                     int comp = this.orfSorter.compare(oldFeature, newFeature);
                     if (comp < 0) {
                         // Old feature is an orphan.
-                        this.oldOnly++;
+                        this.oldOnly.add(oldFeature);
                         oldFeature = oldIter.next();
                     } else if (comp > 0) {
                         // New feature is an orphan.
-                        this.newOnly++;
+                        this.newOnly.add(newFeature);
                         newFeature = newIter.next();
                     } else {
                         // Both features match.  Check the annotations.
@@ -130,12 +130,10 @@ public class Compare {
                 }
                 // Run out both iterators.
                 while (newIter.hasNext()) {
-                    newIter.next();
-                    newOnly++;
+                    newOnly.add(newIter.next());
                 }
                 while (oldIter.hasNext()) {
-                    oldIter.next();
-                    oldOnly++;
+                    oldOnly.add(oldIter.next());
                 }
             }
         }
@@ -158,14 +156,28 @@ public class Compare {
     /**
      * @return the number of ORFs only annotated in the old genome
      */
-    public int getOldOnly() {
-        return oldOnly;
+    public int getOldOnlyCount() {
+        return oldOnly.size();
     }
 
     /**
      * @return the number of ORFs only annotated in the new genome
      */
-    public int getNewOnly() {
+    public int getNewOnlyCount() {
+        return newOnly.size();
+    }
+
+    /**
+     * @return the features from ORFs only annotated in the old genome
+     */
+    public SortedSet<Feature> getOldOnly() {
+        return oldOnly;
+    }
+
+    /**
+     * @return the features from ORFs only annotated in the new genome
+     */
+    public SortedSet<Feature> getNewOnly() {
         return newOnly;
     }
 

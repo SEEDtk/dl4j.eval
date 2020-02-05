@@ -15,7 +15,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 
-import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -163,7 +162,7 @@ public class GenomeStats {
                 this.fidCount++;
                 if (feat.isCDS()) {
                     this.pegCount++;
-                    if (GenomeStats.isHypothetical(feat.getFunction())) {
+                    if (Feature.isHypothetical(feat.getFunction())) {
                         this.hypoCount++;
                     } else {
                         // We are not hypothetical, so determine if one of our roles
@@ -405,23 +404,12 @@ public class GenomeStats {
         if (function == null)
             this.hypoCount++;
         else {
-            boolean hypo = isHypothetical(function);
+            boolean hypo = Feature.isHypothetical(function);
             if (hypo)
                 this.hypoCount++;
         }
         if (peg.getPlfam() != null)
             this.plfamCount++;
-    }
-
-    /**
-     * @return TRUE if a function is hypothetical
-     *
-     * @param function	the functional assignment of interest
-     */
-    public static boolean isHypothetical(String function) {
-        String normalized = StringUtils.substringBefore(function, "#").trim().toLowerCase();
-        boolean retVal = (normalized.contains("hypothetical") || normalized.isEmpty());
-        return retVal;
     }
 
     /**

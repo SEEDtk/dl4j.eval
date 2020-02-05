@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.dl4j.eval;
+package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
 import org.theseed.genome.Compare;
 import org.theseed.genome.Feature;
@@ -30,7 +31,7 @@ import static j2html.TagCreator.*;
  * @author Bruce Parrello
  *
  */
-public class EvalDeepReporter extends EvalHtmlReporter {
+public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
 
     /** computation object for finding the reference genome */
     private RefGenomeComputer refEngine;
@@ -75,7 +76,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
     @Override
     protected void advancedDetailRows(ArrayList<DomContent> detailRows) {
         if (this.refGenomeId != null) {
-            this.detailRow(detailRows, "Reference Genome", td(join(genomeLink(this.refGenomeId), refGenomeName())));
+            detailRow(detailRows, "Reference Genome", td(join(genomeLink(this.refGenomeId), refGenomeName())));
         }
     }
 
@@ -120,16 +121,9 @@ public class EvalDeepReporter extends EvalHtmlReporter {
             boolean comparable = this.compareObj.compare(gReport.getGenome(), this.refGenomeObj);
             if (comparable) {
                 // Create the ORF comparison report.
-                tableRows.clear();
-                this.detailRow(tableRows, "Number of ORFs only annotated in the reference genome", this.numCell(this.compareObj.getOldOnly()));
-                this.detailRow(tableRows, "Number of ORFs only annotated in this genome", this.numCell(this.compareObj.getNewOnly()));
-                this.detailRow(tableRows, "Number of ORFs annotated in both genomes", numCell(this.compareObj.getCommon()));
-                this.detailRow(tableRows, "Number of ORFs annotated in both genomes with identical functions and lengths", numCell(this.compareObj.getIdentical()));
-                this.detailRow(tableRows, "Number of ORFs annotated in both genomes, but with different functions", numCell(this.compareObj.getDifferentFunctions()));
-                this.detailRow(tableRows, "Number of identically-annotated ORFs whose proteins are longer in the reference genome", numCell(this.compareObj.getShorter()));
-                this.detailRow(tableRows, "Number of identically-annotated ORFs whose proteins are longer in this genome", numCell(this.compareObj.getLonger()));
-                retVal = join(retVal, h2("Comparison of Annotation Results by Open Reading Frame"),
-                        div(table().with(tableRows.stream()).withClass(TABLE_CLASS)).withClass("shrinker"));
+                Compare comparison = this.compareObj;
+                DomContent report = compareReport(comparison);
+                retVal = join(retVal, report);
                 // Add a report row for this genome to the master ORF report.  We make a safety check in case the reference
                 // genome is terrible and would cause a divide-by-0 error.
                 double denominator = refCounts.getPegCount();
@@ -141,7 +135,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
                             numCell(newCounts.getKnownCount() * 100 / (double) refCounts.getKnownCount()),
                             numCell(this.compareObj.getIdentical() * 100 / denominator),
                             numCell((this.compareObj.getIdentical() + this.compareObj.getShorter() + this.compareObj.getLonger()) * 100 / denominator),
-                            numCell(this.compareObj.getNewOnly() * 100 / denominator));
+                            numCell(this.compareObj.getNewOnlyCount() * 100 / denominator));
                     this.orfReportRows.add(orfRow);
                 }
             }
@@ -316,7 +310,7 @@ public class EvalDeepReporter extends EvalHtmlReporter {
      * @param reports	array of evaluated genomes
      */
     @Override
-    protected void setupGenomes(GenomeStats[] reports) {
+    public void setupGenomes(GenomeStats[] reports) {
         this.refEngine.setupReferences(reports);
     }
 }

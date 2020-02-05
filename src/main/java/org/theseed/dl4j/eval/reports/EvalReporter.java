@@ -1,7 +1,7 @@
 /**
  *
  */
-package org.theseed.dl4j.eval;
+package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
@@ -9,6 +9,7 @@ import java.io.UncheckedIOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.RoleMap;
 
@@ -57,7 +58,9 @@ public abstract class EvalReporter implements AutoCloseable {
         /** HTML web pages */
         HTML,
         /** HTML web pages with comparison to a reference genome */
-        DEEP
+        DEEP,
+        /** HTML annotation comparison */
+        COMPARE
     }
 
     /**
@@ -101,6 +104,9 @@ public abstract class EvalReporter implements AutoCloseable {
             break;
         case DEEP :
             retVal = new EvalDeepReporter(outDir);
+            break;
+        case COMPARE :
+            retVal = new EvalCompareReporter(outDir);
             break;
         default :
             throw new RuntimeException("Unsupported output format.");
@@ -322,10 +328,20 @@ public abstract class EvalReporter implements AutoCloseable {
     }
 
     /**
+     * @return the name of the HTML file for a genome.
+     *
+     * @param genomeId	ID of the genome of interest
+     */
+    protected File htmlFile(String genomeId) {
+        return new File(this.getOutDir(), genomeId + ".html");
+    }
+
+
+    /**
      * Perform special setup for the specified batch of evaluated genomes.
      *
      * @param reports	array of genome evaluations
      */
-    protected abstract void setupGenomes(GenomeStats[] reports);
+    public abstract void setupGenomes(GenomeStats[] reports);
 
 }
