@@ -43,7 +43,7 @@ public class Compare {
     }
 
     /**
-     * Comparator for sorting Features by contig, strand, end point.
+     * Comparator for sorting Features by contig, end point, strand.
      */
     public static class OrfSorter implements Comparator<Feature> {
 
@@ -53,9 +53,9 @@ public class Compare {
             Location loc1 = arg1.getLocation();
             int retVal = loc0.getContigId().compareTo(loc1.getContigId());
             if (retVal == 0) {
-                retVal = loc0.getDir() - loc1.getDir();
+                retVal = loc0.getEnd() - loc1.getEnd();
                 if (retVal == 0)
-                    retVal = loc0.getEnd() - loc1.getEnd();
+                    retVal = loc0.getDir() - loc1.getDir();
             }
             return retVal;
         }
@@ -70,12 +70,7 @@ public class Compare {
      * @return TRUE if successful, FALSE if the genomes cannot be compared.
      */
     public boolean compare(Genome newGenome, Genome oldGenome) {
-        boolean retVal = true;
-        // Determine if the genomes can be compared.
-        for (Contig oldContig : oldGenome.getContigs()) {
-            if (newGenome.getContig(oldContig.getId()) == null)
-                retVal = false;
-        }
+        boolean retVal = checkGenomes(newGenome, oldGenome);
         if (retVal) {
             // The genomes are comparable. Load all their features into a sorted set.
             SortedSet<Feature> newOrfs = this.sortFeatures(newGenome);
@@ -90,52 +85,80 @@ public class Compare {
             // Get iterators through the sets.
             Iterator<Feature> newIter = newOrfs.iterator();
             Iterator<Feature> oldIter = oldOrfs.iterator();
-            if (! newIter.hasNext()) {
-                this.oldOnly.addAll(oldOrfs);
-            } else if (! oldIter.hasNext()) {
-                this.newOnly.addAll(newOrfs);
-            } else {
-                // We have ORFs to compare. Prime the main loop.
-                Feature oldFeature = newIter.next();
-                Feature newFeature = newIter.next();
-                while (newIter.hasNext() && oldIter.hasNext()) {
-                    int comp = this.orfSorter.compare(oldFeature, newFeature);
-                    if (comp < 0) {
-                        // Old feature is an orphan.
-                        this.oldOnly.add(oldFeature);
-                        oldFeature = oldIter.next();
-                    } else if (comp > 0) {
-                        // New feature is an orphan.
-                        this.newOnly.add(newFeature);
-                        newFeature = newIter.next();
+            Feature oldFeature = next(oldIter);
+            Feature newFeature = next(newIter);
+            while (oldFeature != null && newFeature != null) {
+                int comp = orfCompare(oldFeature, newFeature);
+                if (comp < 0) {
+                    // Old feature is an orphan.
+                    this.oldOnly.add(oldFeature);
+                    oldFeature = next(oldIter);
+                } else if (comp > 0) {
+                    // New feature is an orphan.
+                    this.newOnly.add(newFeature);
+                    newFeature = next(newIter);
+                } else {
+                    // Both features match.  Check the annotations.
+                    if (! newFeature.getFunction().contentEquals(oldFeature.getFunction())) {
+                        differentFunctions++;
                     } else {
-                        // Both features match.  Check the annotations.
-                        if (! newFeature.getFunction().contentEquals(oldFeature.getFunction())) {
-                            differentFunctions++;
+                        // Annotations match.  Check the lengths.
+                        comp = newFeature.getLocation().getLength() - oldFeature.getLocation().getLength();
+                        if (comp < 0) {
+                            this.shorter++;
+                        } else if (comp > 0) {
+                            this.longer++;
                         } else {
-                            // Annotations match.  Check the lengths.
-                            comp = newFeature.getLocation().getLength() - oldFeature.getLocation().getLength();
-                            if (comp < 0) {
-                                this.shorter++;
-                            } else if (comp > 0) {
-                                this.longer++;
-                            } else {
-                                this.identical++;
-                            }
+                            this.identical++;
                         }
-                        // Advance both features.
-                        oldFeature = oldIter.next();
-                        newFeature = newIter.next();
                     }
-                }
-                // Run out both iterators.
-                while (newIter.hasNext()) {
-                    newOnly.add(newIter.next());
-                }
-                while (oldIter.hasNext()) {
-                    oldOnly.add(oldIter.next());
+                    // Advance both features.
+                    oldFeature = next(oldIter);
+                    newFeature = next(newIter);
                 }
             }
+            // Run out both iterators.
+            while (newIter.hasNext()) {
+                newOnly.add(newIter.next());
+            }
+            while (oldIter.hasNext()) {
+                oldOnly.add(oldIter.next());
+            }
+        }
+        return retVal;
+    }
+
+    /**
+     * @return the comparison between the ORFs containing the two features
+     *
+     * @param f1	first feature
+     * @param f2	second feature
+     */
+    public int orfCompare(Feature f1, Feature f2) {
+        return this.orfSorter.compare(f1, f2);
+    }
+
+    /**
+     * @return the next feature, or NULL at the end
+     *
+     * @param iter	iterator of interest
+     */
+    public Feature next(Iterator<Feature> iter) {
+        return (iter.hasNext() ? iter.next() : null);
+    }
+
+    /**
+     * @return TRUE if the genomes have identical contig names, else FALSE.
+     *
+     * @param newGenome		new genome to check
+     * @param oldGenome		old genoem to compare it against
+     */
+    public boolean checkGenomes(Genome newGenome, Genome oldGenome) {
+        // Determine if the genomes can be compared.
+        boolean retVal = true;
+        for (Contig oldContig : oldGenome.getContigs()) {
+            if (newGenome.getContig(oldContig.getId()) == null)
+                retVal = false;
         }
         return retVal;
     }
@@ -147,7 +170,7 @@ public class Compare {
      *
      * @return a sorted set of all the pegs in the genome
      */
-    private SortedSet<Feature> sortFeatures(Genome genome) {
+    public SortedSet<Feature> sortFeatures(Genome genome) {
         SortedSet<Feature> retVal = new TreeSet<Feature>(this.orfSorter);
         retVal.addAll(genome.getPegs());
         return retVal;

@@ -21,6 +21,8 @@ import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.proteins.kmers.KmerCollectionGroup;
+import org.theseed.reports.Html;
+
 import j2html.tags.ContainerTag;
 import j2html.tags.DomContent;
 import static j2html.TagCreator.*;
@@ -76,7 +78,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
     @Override
     protected void advancedDetailRows(ArrayList<DomContent> detailRows) {
         if (this.refGenomeId != null) {
-            detailRow(detailRows, "Reference Genome", td(join(genomeLink(this.refGenomeId), refGenomeName())));
+            Html.detailRow(detailRows, "Reference Genome", td(join(this.refGenomeObj.genomeLink(), refGenomeName())));
         }
     }
 
@@ -115,7 +117,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
             tableRows.add(compareTableRow("Features performing subsystem-related roles", newCounts.getKnownCount(), refCounts.getKnownCount()));
             tableRows.add(compareTableRow("Features performing one of the roles used in this evaluation",
                     newCounts.getUsefulCount(), refCounts.getUsefulCount()));
-            retVal = formatTable("Comparison of " + gReport.getId() + " with Reference Genome " + this.refGenomeId,
+            retVal = Html.formatTable("Comparison of " + gReport.getId() + " with Reference Genome " + this.refGenomeId,
                     tableRows);
             // Check to see if we can do a comparison report.
             boolean comparable = this.compareObj.compare(gReport.getGenome(), this.refGenomeObj);
@@ -129,13 +131,13 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
                 double denominator = refCounts.getPegCount();
                 if (denominator > 0 && refCounts.getKnownCount() > 0) {
                     DomContent orfRow = tr(
-                            td(genomeLink(gReport.getId())),
-                            td(gPageLink(gReport.getId(), gReport.getName())),
-                            td(genomeLink(this.refGenomeId)),
-                            numCell(newCounts.getKnownCount() * 100 / (double) refCounts.getKnownCount()),
-                            numCell(this.compareObj.getIdentical() * 100 / denominator),
-                            numCell((this.compareObj.getIdentical() + this.compareObj.getShorter() + this.compareObj.getLonger()) * 100 / denominator),
-                            numCell(this.compareObj.getNewOnlyCount() * 100 / denominator));
+                            td(gReport.getGenome().genomeLink()),
+                            td(Html.gPageLink(gReport.getId(), gReport.getName())),
+                            td(this.refGenomeObj.genomeLink()),
+                            Html.numCell(newCounts.getKnownCount() * 100 / (double) refCounts.getKnownCount()),
+                            Html.numCell(this.compareObj.getIdentical() * 100 / denominator),
+                            Html.numCell((this.compareObj.getIdentical() + this.compareObj.getShorter() + this.compareObj.getLonger()) * 100 / denominator),
+                            Html.numCell(this.compareObj.getNewOnlyCount() * 100 / denominator));
                     this.orfReportRows.add(orfRow);
                 }
             }
@@ -152,7 +154,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      */
     private DomContent compareTableRow(String label, int newValue, int oldValue) {
         double percent = (oldValue > 0 ? newValue * 100.0 / oldValue : 0);
-        return tr(td(label), numCell(newValue), numCell(oldValue), numCell(percent));
+        return tr(td(label), Html.numCell(newValue), Html.numCell(oldValue), Html.numCell(percent));
     }
 
     /**
@@ -204,7 +206,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
             String closeFid = this.closeFeatureMap.get(feat.getId());
             if (closeFid != null) {
                 // We found one. Form our message.
-                retVal = join(this.featureLink(closeFid), "in the reference genome is close, and performs the same role.");
+                retVal = join(this.refGenomeObj.featureLink(closeFid), "in the reference genome is close, and performs the same role.");
             }
         }
         return retVal;
@@ -227,7 +229,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
                 list.with(li("No features perform this role in the reference genome."));
             } else {
                 Collection<String> fidList = roleFeatures.getKeys();
-                list.with(li(join("This role is performed by ", featureListLink(fidList), "in the reference genome.")));
+                list.with(li(join("This role is performed by ", this.refGenomeObj.featureListLink(fidList), "in the reference genome.")));
             }
         }
     }
@@ -274,7 +276,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
     protected DomContent advancedSummaryReport() {
         DomContent retVal = null;
         if (this.orfReportRows.size() > 1)
-            retVal = formatTable("ORF Comparison Summary", this.orfReportRows);
+            retVal = Html.formatTable("ORF Comparison Summary", this.orfReportRows);
         return retVal;
     }
 

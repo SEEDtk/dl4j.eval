@@ -30,6 +30,9 @@ public class App
         case "gto" :
             processor = new GtoEvalProcessor();
             break;
+        case "compare" :
+            processor = new CompareProcessor();
+            break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
         }

@@ -21,6 +21,9 @@ import org.theseed.genome.Annotation;
 import org.theseed.genome.Compare;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
+import org.theseed.reports.Html;
+import org.theseed.sequence.FastaOutputStream;
+import org.theseed.sequence.Sequence;
 
 import j2html.tags.DomContent;
 
@@ -64,7 +67,7 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
         // Create the array for the summary lines.
         this.summaryRows = new ArrayList<DomContent>(50);
         // Add the header line.
-        summaryRows.add(tr(th("Genome ID"), th("Genome Name"), th("Identical").withClass("num"), th("Same Function").withClass("num"),
+        summaryRows.add(tr(th("Genome ID"), th("Genome Name"), th("Ref Genome"), th("Ref Genome Name"), th("Identical").withClass("num"), th("Same Function").withClass("num"),
                 th("Different Function").withClass("num"), th("False Positive").withClass("num"), th("False Negative").withClass("num")));
     }
 
@@ -80,121 +83,123 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
             // Compare the genomes.  Only proceed if the compare works.
             boolean compared = this.compareObj.compare(newGenome, refGenome);
             if (compared) {
-                // Build the evaluation summary table.
-                List<DomContent> qualityRows = new ArrayList<DomContent>(25);
-                EvalHtmlReporter.qualityRows(gReport, qualityRows);
-                // Build the two role tables.  First, the false positives.
-                List<DomContent> tableRows = new ArrayList<DomContent>(this.compareObj.getNewOnlyCount());
-                tableRows.add(tr(th("Peg ID"), th("function"), th("Prot Len").withClass("num"), th("Evidence").withClass("num"),
-                        th("Strength").withClass("num")));
-                // These track the minimum evidence and strength for good ORFs.
-                int minEvidence = Integer.MAX_VALUE;
-                double minStrength = 1.0;
-                // These track the number of good ORFs that fall within certain ranges.
-                int[] evidenceBy50Count = new int[10];
-                int[] strengthByP1Count = new int[10];
-                // Get the false positive set.
-                Set<Feature> newOnly = this.compareObj.getNewOnly();
-                // Get the features sorted by function.
-                SortedSet<Feature> sortedFeatures = new TreeSet<Feature>(new Feature.ByFunction());
-                sortedFeatures.addAll(newGenome.getPegs());
-                for (Feature peg : sortedFeatures) {
-                    // Extract the strength and evidence from the annotations.
-                    int evidence = Integer.MAX_VALUE;
-                    double strength = 1.0;
-                    for (Annotation anno : peg.getAnnotations()) {
-                        Matcher match = EVIDENCE_PATTERN.matcher(anno.getComment());
-                        if (match.matches()) {
-                            evidence = Integer.parseInt(match.group(1));
-                            strength = Double.parseDouble(match.group(2));
+                // Create a FASTA output file for the false positives.
+                try (FastaOutputStream fpOut = new FastaOutputStream(new File(this.getOutDir(), genomeId + ".faa"))) {
+                    // Build the evaluation summary table.
+                    List<DomContent> qualityRows = new ArrayList<DomContent>(25);
+                    EvalHtmlReporter.qualityRows(gReport, qualityRows);
+                    // Build the two role tables.  First, the false positives.
+                    List<DomContent> tableRows = new ArrayList<DomContent>(this.compareObj.getNewOnlyCount());
+                    tableRows.add(tr(th("Peg ID"), th("function"), th("Prot Len").withClass("num"), th("Evidence").withClass("num"),
+                            th("Strength").withClass("num")));
+                    // These track the minimum evidence and strength for good ORFs.
+                    int minEvidence = Integer.MAX_VALUE;
+                    double minStrength = 1.0;
+                    // These track the number of good ORFs that fall within certain ranges.
+                    int[] evidenceBy50Count = new int[10];
+                    int[] strengthByP1Count = new int[10];
+                    // Get the false positive set.
+                    Set<Feature> newOnly = this.compareObj.getNewOnly();
+                    // Get the features sorted by function.
+                    SortedSet<Feature> sortedFeatures = new TreeSet<Feature>(new Feature.ByFunction());
+                    sortedFeatures.addAll(newGenome.getPegs());
+                    for (Feature peg : sortedFeatures) {
+                        // Extract the strength and evidence from the annotations.
+                        int evidence = Integer.MAX_VALUE;
+                        double strength = 1.0;
+                        for (Annotation anno : peg.getAnnotations()) {
+                            Matcher match = EVIDENCE_PATTERN.matcher(anno.getComment());
+                            if (match.matches()) {
+                                evidence = Integer.parseInt(match.group(1));
+                                strength = Double.parseDouble(match.group(2));
+                            }
+                        }
+                        // If this is a false positive, put it in the FP table and the output FASTA. Otherwise, merge it into the trackers.
+                        if (newOnly.contains(peg)) {
+                            tableRows.add(tr(td(newGenome.featureRegionLink(peg.getId())), td(peg.getFunction()),
+                                    Html.numCell(peg.getProteinLength()), Html.numCell(evidence),
+                                    Html.numCell(strength * 3)));
+                            Sequence fpSeq = new Sequence(peg.getId(), peg.getFunction(), peg.getProteinTranslation());
+                            fpOut.write(fpSeq);
+                        } else {
+                            minEvidence = Math.min(evidence, minEvidence);
+                            minStrength = Math.min(strength, minStrength);
+                            int evidenceI = Math.min(evidence / 50, 9);
+                            int strengthI = Math.min((int) (strength*30), 9);
+                            evidenceBy50Count[evidenceI]++;
+                            strengthByP1Count[strengthI]++;
                         }
                     }
-                    // If this is a false positive, put it in the FP table. Otherwise, merge it into the trackers.
-                    if (newOnly.contains(peg)) {
-                        tableRows.add(tr(td(EvalHtmlReporter.featureRegionLink(peg.getId())), td(peg.getFunction()),
-                                EvalHtmlReporter.numCell(peg.getProteinLength()), EvalHtmlReporter.numCell(evidence),
-                                EvalHtmlReporter.numCell(strength * 3)));
-                    } else {
-                        minEvidence = Math.min(evidence, minEvidence);
-                        minStrength = Math.min(strength, minStrength);
-                        int evidenceI = Math.min(evidence / 50, 9);
-                        int strengthI = Math.min((int) (strength*30), 9);
-                        evidenceBy50Count[evidenceI]++;
-                        strengthByP1Count[strengthI]++;
+                    DomContent fpTable = Html.formatTable("Proteins Only in This Genome", tableRows);
+                    fpOut.flush();
+                    // Add some more comparison data to the quality rows.
+                    Html.detailRow(qualityRows, "Number of correctly-called functions",
+                            Html.numCell(compareObj.getIdentical()+compareObj.getLonger()+compareObj.getShorter()));
+                    Html.detailRow(qualityRows, "Number of differing functions", Html.numCell(compareObj.getDifferentFunctions()));
+                    Html.detailRow(qualityRows, "Number of false positives", Html.numCell(compareObj.getNewOnlyCount()));
+                    Html.detailRow(qualityRows, "Number of false negatives", Html.numCell(compareObj.getOldOnlyCount()));
+                    Html.detailRow(qualityRows, "Minimum evidence for found ORFs", Html.numCell(minEvidence));
+                    Html.detailRow(qualityRows, "Minimum strength for found ORFs", Html.numCell(minStrength * 3));
+                    // Now, the false negatives, again sorted by function.
+                    tableRows.clear();
+                    tableRows.add(tr(th("Peg ID"), th("function"), th("Prot Len").withClass("num")));
+                    sortedFeatures.clear();
+                    sortedFeatures.addAll(this.compareObj.getOldOnly());
+                    for (Feature peg : sortedFeatures) {
+                        tableRows.add(tr(td(refGenome.featureRegionLink(peg.getId())), td(peg.getFunction()),
+                                Html.numCell(peg.getProteinLength())));
                     }
-                }
-                DomContent fpTable = EvalHtmlReporter.formatTable("Proteins Only in This Genome", tableRows);
-                // Add some more comparison data to the quality rows.
-                EvalHtmlReporter.detailRow(qualityRows, "Number of correctly-called functions",
-                        EvalHtmlReporter.numCell(compareObj.getIdentical()+compareObj.getLonger()+compareObj.getShorter()));
-                EvalHtmlReporter.detailRow(qualityRows, "Number of differing functions", EvalHtmlReporter.numCell(compareObj.getDifferentFunctions()));
-                EvalHtmlReporter.detailRow(qualityRows, "Number of false positives", EvalHtmlReporter.numCell(compareObj.getNewOnlyCount()));
-                EvalHtmlReporter.detailRow(qualityRows, "Number of false negatives", EvalHtmlReporter.numCell(compareObj.getOldOnlyCount()));
-                EvalHtmlReporter.detailRow(qualityRows, "Minimum evidence for found ORFs", EvalHtmlReporter.numCell(minEvidence));
-                EvalHtmlReporter.detailRow(qualityRows, "Minimum strength for found ORFs", EvalHtmlReporter.numCell(minStrength * 3));
-                // Now, the false negatives, again sorted by function.
-                tableRows.clear();
-                tableRows.add(tr(th("Peg ID"), th("function"), th("Prot Len").withClass("num")));
-                sortedFeatures.clear();
-                sortedFeatures.addAll(this.compareObj.getOldOnly());
-                for (Feature peg : sortedFeatures) {
-                    tableRows.add(tr(td(EvalHtmlReporter.featureRegionLink(peg.getId())), td(peg.getFunction()),
-                            EvalHtmlReporter.numCell(peg.getProteinLength())));
-                }
-                DomContent fnTable = EvalHtmlReporter.formatTable("Proteins Not Found in This Genome", tableRows);
-                // Build the quality table.
-                DomContent qualityTable = div(table().with(qualityRows.stream()).withClass(EvalHtmlReporter.TABLE_CLASS)).withClass("shrinker");
-                // Build the tracker table.
-                List<DomContent> headerRow = new ArrayList<DomContent>(11);
-                List<DomContent> dataRow = new ArrayList<DomContent>(11);
-                headerRow.add(th(rawHtml("&nbsp;")));
-                dataRow.add(th("Evidence Counts"));
-                for (int i = 0; i < 9; i++) {
-                    headerRow.add(th(String.format("%d to %d", i*50, i*50 + 49)).withClass("num"));
-                    dataRow.add(EvalHtmlReporter.numCell(evidenceBy50Count[i]));
-                }
-                headerRow.add(th(">= 450"));
-                dataRow.add(EvalHtmlReporter.numCell(evidenceBy50Count[9]));
-                DomContent trackers = div(table().with(tr(each(headerRow.stream()))).with(tr(each(dataRow.stream())))
-                        .withClass(EvalHtmlReporter.TABLE_CLASS)).withClass("wrapper");
-                headerRow.clear();
-                dataRow.clear();
-                headerRow.add(th(rawHtml("&nbsp;")));
-                dataRow.add(th("Strength Counts"));
-                for (int i = 0; i < 10; i++) {
-                    headerRow.add(th(String.format("%3.1f to < %3.1f", i / 10.0, (i+1)/10.0)).withClass("num"));
-                    dataRow.add(EvalHtmlReporter.numCell(strengthByP1Count[i]));
-                }
-                trackers = join(trackers, div(table().with(tr(each(headerRow.stream()))).with(tr(each(dataRow.stream())))
-                        .withClass(EvalHtmlReporter.TABLE_CLASS)).withClass("wrapper"));
+                    DomContent fnTable = Html.formatTable("Proteins Not Found in This Genome", tableRows);
+                    // Build the quality table.
+                    DomContent qualityTable = div(table().with(qualityRows.stream()).withClass(Html.TABLE_CLASS)).withClass("shrinker");
+                    // Build the tracker table.
+                    List<DomContent> headerRow = new ArrayList<DomContent>(11);
+                    List<DomContent> dataRow = new ArrayList<DomContent>(11);
+                    headerRow.add(th(rawHtml("&nbsp;")));
+                    dataRow.add(th("Evidence Counts"));
+                    for (int i = 0; i < 9; i++) {
+                        headerRow.add(th(String.format("%d to %d", i*50, i*50 + 49)).withClass("num"));
+                        dataRow.add(Html.numCell(evidenceBy50Count[i]));
+                    }
+                    headerRow.add(th(">= 450"));
+                    dataRow.add(Html.numCell(evidenceBy50Count[9]));
+                    DomContent trackers = div(table().with(tr(each(headerRow.stream()))).with(tr(each(dataRow.stream())))
+                            .withClass(Html.TABLE_CLASS)).withClass("wrapper");
+                    headerRow.clear();
+                    dataRow.clear();
+                    headerRow.add(th(rawHtml("&nbsp;")));
+                    dataRow.add(th("Strength Counts"));
+                    for (int i = 0; i < 10; i++) {
+                        headerRow.add(th(String.format("%3.1f to < %3.1f", i / 10.0, (i+1)/10.0)).withClass("num"));
+                        dataRow.add(Html.numCell(strengthByP1Count[i]));
+                    }
+                    trackers = join(trackers, div(table().with(tr(each(headerRow.stream()))).with(tr(each(dataRow.stream())))
+                            .withClass(Html.TABLE_CLASS)).withClass("wrapper"));
 
-                // Assemble all of this into a page.
-                String page = html(
-                        head(
-                            title(newGenome.getName() + " Evaluation Report"),
-                            link().withRel("stylesheet").withHref(EvalHtmlReporter.CSS_HREF).withType("text/css"),
-                            style(EvalHtmlReporter.EXTRA_STYLES).withType("text/css")
-                        ),
-                        body(
-                            h1("Evaluation Report for " + genomeId + " " + newGenome.getName()),
-                            qualityTable,
-                            h2("Distribution of Found ORFs by Evidence and Strength"),
-                            trackers,
-                            fpTable,
-                            fnTable
-                        ).withClass(EvalHtmlReporter.BODY_CLASS)
-                    ).render();
-                FileUtils.writeStringToFile(outFile, page, "UTF-8");
-                // Finally, create our summary row.  All numbers are expressed as a percent of the reference genome peg count.
-                double denom = refGenome.getPegs().size() / 100.0;
-                DomContent sumRow = tr(td(EvalHtmlReporter.genomeLink(genomeId)), td(EvalHtmlReporter.gPageLink(genomeId, newGenome.getName())),
-                        EvalHtmlReporter.numCell(this.compareObj.getIdentical() / denom),
-                        EvalHtmlReporter.numCell((this.compareObj.getIdentical() + this.compareObj.getLonger() + this.compareObj.getShorter()) / denom),
-                        EvalHtmlReporter.numCell(this.compareObj.getDifferentFunctions() / denom),
-                        EvalHtmlReporter.numCell(this.compareObj.getNewOnlyCount() / denom),
-                        EvalHtmlReporter.numCell(this.compareObj.getOldOnlyCount() / denom)
-                        );
-                this.summaryRows.add(sumRow);
+                    // Assemble all of this into a page.
+                    String page = Html.page(newGenome.getName() + " Evaluation Report",
+                                h1("Evaluation Report for " + genomeId + " " + newGenome.getName()),
+                                qualityTable,
+                                h2("Distribution of Found ORFs by Evidence and Strength"),
+                                trackers,
+                                fpTable,
+                                fnTable
+                            );
+                    FileUtils.writeStringToFile(outFile, page, "UTF-8");
+                    // Finally, create our summary row.  All numbers are expressed as a percent of the reference genome peg count.
+                    double denom = refGenome.getPegs().size() / 100.0;
+                    DomContent sumRow = tr(Html.colorCell(gReport.isGood(), newGenome.genomeLink().render()),
+                            td(Html.gPageLink(genomeId, newGenome.getName())),
+                            td(refGenome.genomeLink()),
+                            td(refGenome.getName()),
+                            Html.numCell(this.compareObj.getIdentical() / denom),
+                            Html.numCell((this.compareObj.getIdentical() + this.compareObj.getLonger() + this.compareObj.getShorter()) / denom),
+                            Html.numCell(this.compareObj.getDifferentFunctions() / denom),
+                            Html.numCell(this.compareObj.getNewOnlyCount() / denom),
+                            Html.numCell(this.compareObj.getOldOnlyCount() / denom)
+                            );
+                    this.summaryRows.add(sumRow);
+                }
             }
         }
     }
@@ -205,20 +210,13 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
 
     @Override
     protected void endSummary() throws IOException {
-        String page = html(
-                head(
-                    title("Evaluation Summary Report"),
-                    link().withRel("stylesheet").withHref(EvalHtmlReporter.CSS_HREF).withType("text/css"),
-                    style(EvalHtmlReporter.EXTRA_STYLES).withType("text/css")
-                ),
-                body(
+        String page = Html.page("Evaluation Summary Report",
                     h1("Comparison Summary Report"),
                     p(String.format("%d genomes processed using evaluator version %s.",
                             this.getGenomeCount(), this.getVersion())),
                     p("All numbers shown in the ORF Comparison Results table are percentages relative to the number of PEGs in the reference genome."),
-                    EvalHtmlReporter.formatTable("ORF Comparison Results", this.summaryRows)
-                ).withClass(EvalHtmlReporter.BODY_CLASS)
-            ).render();
+                    Html.formatTable("ORF Comparison Results", this.summaryRows)
+                );
         File summaryFile = new File(this.getOutDir(), "index.html");
         FileUtils.writeStringToFile(summaryFile, page, "UTF-8");
     }

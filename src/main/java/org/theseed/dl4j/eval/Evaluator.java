@@ -57,7 +57,7 @@ public class Evaluator {
     // FIELDS
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(EvalProcessor.class);
+    protected static Logger log = LoggerFactory.getLogger(Evaluator.class);
     /** array of roles to use */
     protected ArrayList<String> roles;
     /** array of genome statistics objects */
