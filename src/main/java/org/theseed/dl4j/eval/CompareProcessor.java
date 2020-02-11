@@ -237,8 +237,8 @@ public class CompareProcessor implements ICommand {
         double score = (double) (matches * 100) / total;
         String title = "ORF Comparison of " + genome1.getId() + " and " + genome2.getId();
         String page = Html.page(title, h1(title),
-                ul(li("Genome 1 is " + genome1.genomeLink() + " " + genome1.getName()),
-                li("Genome 2 is " + genome2.genomeLink() + " " + genome2.getName()),
+                ul(li(join("Genome 1 is", genome1.genomeLink(), genome1.getName())),
+                li(join("Genome 2 is ", genome2.genomeLink(), genome2.getName())),
                 li(String.format("%4.2f percent of the ORFs matched.", score))),
                 Html.formatTable("Content of each ORF", tableRows));
         String fileName = genome1.getId() + ".html";
