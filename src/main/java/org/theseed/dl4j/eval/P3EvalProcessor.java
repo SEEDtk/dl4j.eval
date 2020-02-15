@@ -38,6 +38,8 @@ import org.theseed.utils.ICommand;
  *
  * --terse		do not write the individual output files, only the summary
  * --clear		clear the output directory before processing
+ * --format		the format of the output reports
+ * --ref		file of reference-genome mappings (the default is to use the reference genome of the bin)
  *
  * @author Bruce Parrello
  *
@@ -58,6 +60,18 @@ public class P3EvalProcessor extends Evaluator implements ICommand {
     @Option(name = "-i", aliases = { "--input" }, metaVar = "genomed.tbl", usage = "input file name (if not STDIN)")
     private File inFile;
 
+    /** output directory */
+    @Option(name = "-O", aliases = { "--outDir" }, metaVar = "outDir", usage = "output directory")
+    private File outputDir;
+
+    /** clear-output flag */
+    @Option(name = "--clear", usage = "clear output directory before starting")
+    private boolean clearOutputDir;
+
+    /** file of reference genome GTO mappings */
+    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
+    private File refGenomeFile;
+
     /** key column index */
     @Option(name = "-c", aliases = { "--col" }, metaVar = "genome_id", usage = "name or index (1-based) of the input genome ID column")
     private String colId;
@@ -73,6 +87,8 @@ public class P3EvalProcessor extends Evaluator implements ICommand {
         this.colId = "1";
         this.inFile = null;
         this.batchSize = 200;
+        this.outputDir = new File(System.getProperty("user.dir"));
+        this.refGenomeFile = null;
         // Parse the command line.
         CmdLineParser parser = new CmdLineParser(this);
         try {
@@ -88,6 +104,8 @@ public class P3EvalProcessor extends Evaluator implements ICommand {
                     log.info("Genome IDs will be read from standard input.");
                     this.inStream = new TabbedLineReader(System.in);
                 }
+                // Validate the output directory.
+                this.validateOutputDir(this.outputDir, this.clearOutputDir);
                 // Compute the input column index.
                 this.colIdx = this.inStream.findField(this.colId);
                // Denote we're ready to run.
@@ -106,8 +124,12 @@ public class P3EvalProcessor extends Evaluator implements ICommand {
     @Override
     public void run() {
         try {
+            // Set up the reference-genome engine (if necessary).
+            this.setupRefGenomeEngine(this.refGenomeFile);
             // Connect to PATRIC.
             this.p3 = new Connection();
+            // Set up the output directory.
+            this.setOutDir(this.outputDir);
             // Read in the role maps.
             this.initializeData();
             // Create the arrays.

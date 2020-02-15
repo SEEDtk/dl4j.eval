@@ -69,7 +69,7 @@ public class Evaluator {
     /** array of flags indicating which roles have output */
     private boolean[] rolesUsed;
     /** role definition map */
-    protected RoleMap roleDefinitions;
+    private RoleMap roleDefinitions;
     /** completeness database */
     private List<UniversalRoles> compList;
     /** start time in milliseconds */
@@ -82,6 +82,10 @@ public class Evaluator {
     private EvalReporter reporter;
     /** directory of consistency role models */
     private File roleDir;
+    /** current output directory */
+    private File outDir;
+    /** TRUE if the reporter has been initialized, else FALSE */
+    private boolean reportsOpened;
 
     // COMMAND LINE OPTIONS
 
@@ -92,10 +96,6 @@ public class Evaluator {
     /** summary-only flag */
     @Option(name = "--terse", usage = "do not output detail files")
     private boolean terse;
-
-    /** clear-output flag */
-    @Option(name = "--clear", usage = "clear output directory before starting")
-    private boolean clearOutDir;
 
     /** debug-message flag */
     @Option(name = "-v", aliases = { "--verbose", "--debug" }, usage = "show more detailed progress messages")
@@ -109,14 +109,6 @@ public class Evaluator {
     @Option(name = "-s", aliases = { "--sensitivity" }, metaVar = "0.9", usage = "maximum distance for a close protein")
     private double sensitivity;
 
-    /** output directory */
-    @Option(name = "-O", aliases = { "--outDir" }, metaVar = "outDir", usage = "output directory")
-    private File outDir;
-
-    /** file of reference genome GTO mappings */
-    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
-    private File refGenomeFile;
-
     /** model directory */
     @Argument(index = 0, metaVar = "modelDir", usage = "model directory", required = true)
     private File modelDir;
@@ -129,7 +121,7 @@ public class Evaluator {
         this.help = false;
         this.terse = false;
         this.debug = false;
-        this.clearOutDir = false;
+        this.reportsOpened = false;
         this.outDir = new File(System.getProperty("user.dir"));
         this.format = EvalReporter.Type.TEXT;
         this.sensitivity = 0.8;
@@ -139,7 +131,7 @@ public class Evaluator {
      * @return the detail level needed in genomes read from PATRIC (can be overridden by subclasses)
      */
     public P3Genome.Details getDetailLevel() {
-        return this.reporter.getDetailLevel();
+        return this.getReporter().getDetailLevel();
     }
 
     /**
@@ -159,51 +151,74 @@ public class Evaluator {
             this.roleDir = new File(this.modelDir, "Roles");
             if (! this.roleDir.isDirectory())
                 throw new FileNotFoundException("Roles subdirectory not found in " + this.modelDir + ".");
-            // Check the output directory.
-            if (! this.outDir.exists()) {
-                log.info("Creating directory {}.", this.outDir);
-                if (! this.outDir.mkdir()) {
-                    throw new IOException("Could not create output directory.");
-                }
-            } else if (! this.outDir.isDirectory()) {
-                throw new FileNotFoundException("Output directory " + this.outDir + " is invalid.");
-            } else if (this.clearOutDir) {
-                log.info("Erasing output directory.");
-                FileUtils.cleanDirectory(this.outDir);
-            }
-            log.info("Output will be in directory {}.", this.outDir);
             // Create the reporting object.
-            this.reporter = EvalReporter.create(this.outDir, this.format);
+            this.reporter = EvalReporter.create(this.format);
             // Check for terse mode.
             if (this.terse)
-                this.reporter.setOption(EvalReporter.Option.NODETAILS);
+                this.getReporter().setOption(EvalReporter.Option.NODETAILS);
             // Here we tune the deep report.
-            if (this.reporter instanceof EvalDeepReporter) {
+            if (this.getReporter() instanceof EvalDeepReporter) {
                 // Validate the sensitivity.
                 if (this.sensitivity < 0 || this.sensitivity >= 1.0)
                     throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
                 // Set the special parameters.
-                EvalDeepReporter deepReporter = ((EvalDeepReporter) this.reporter);
+                EvalDeepReporter deepReporter = ((EvalDeepReporter) this.getReporter());
                 deepReporter.setSensitivity(this.sensitivity);
-            }
-            if (this.reporter instanceof IRefReporter) {
-                IRefReporter refReporter = (IRefReporter) this.reporter;
-                if (this.refGenomeFile != null) {
-                    refReporter.setEngine(new FileRefGenomeComputer(this.refGenomeFile));
-                } else {
-                    refReporter.setEngine(new PatricRefGenomeComputer(this.modelDir));
-                }
             }
             retVal = true;
         }
         return retVal;
     }
 
+    /**
+     * Set up the reference-genome computation engine.
+     *
+     * @param refGenomeFile		reference-genome file (or NULL if PATRIC is to be used)
+     *
+     * @throws IOException
+     */
+    protected void setupRefGenomeEngine(File refGenomeFile) throws IOException {
+        if (this.getReporter() instanceof IRefReporter) {
+            IRefReporter refReporter = (IRefReporter) this.getReporter();
+            if (refGenomeFile != null) {
+                refReporter.setEngine(new FileRefGenomeComputer(refGenomeFile));
+            } else {
+                refReporter.setEngine(new PatricRefGenomeComputer(this.modelDir));
+            }
+        }
+    }
+
+    /**
+     * Validate the output directory and optionally clear it.  This also sets the directory,
+     * so it must be called after "validateParms".
+     *
+     * @param outputDir			proposed output directory
+     * @param clearOutputDir	TRUE if the directory should be cleared
+     *
+     * @throws IOException
+     */
+    protected void validateOutputDir(File outputDir, boolean clearOutputDir) throws IOException {
+        // Check the output directory.
+        if (! outputDir.exists()) {
+            log.info("Creating directory {}.", this.outDir);
+            if (! this.outDir.mkdir()) {
+                throw new IOException("Could not create output directory.");
+            }
+        } else if (! outputDir.isDirectory()) {
+            throw new FileNotFoundException("Output directory " + outputDir + " is invalid.");
+        } else if (clearOutputDir) {
+            log.info("Erasing output directory.");
+            FileUtils.cleanDirectory(outputDir);
+        }
+        this.setOutDir(outputDir);
+        log.info("Output will be in directory {}.", this.outDir);
+    }
+
     /**'
      * Turn off the summary report.
      */
     public void suppressSummary() {
-        this.reporter.setOption(EvalReporter.Option.NOSUMMARY);
+        this.getReporter().setOption(EvalReporter.Option.NOSUMMARY);
     }
 
     /**
@@ -256,6 +271,13 @@ public class Evaluator {
         this.compList = UniversalRoles.Load(compFile);
         // Create the roles-used array for the consistency checker.
         this.rolesUsed = new boolean[this.roles.size()];
+    }
+
+    /**
+     * Reset for another evaluation.
+     */
+    protected void clearGenomes() {
+        this.reportsOpened = false;
     }
 
     /**
@@ -356,22 +378,23 @@ public class Evaluator {
     protected void writeOutput() throws IOException {
         log.info("Writing output.");
         // If this is our first time, initialize the reports.
-        if (this.gCount == this.nGenomes) {
-            this.reporter.open(this.version, this.roleDefinitions, this.modelDir);
+        if (! this.reportsOpened) {
+            this.getReporter().open(this.version, this.roleDefinitions, this.modelDir);
+            this.reportsOpened = true;
         }
         // Set up the reference genomes.
-        this.reporter.setupGenomes(this.reports);
+        this.getReporter().setupGenomes(this.reports);
         // Write the output.
         for (int g = 0; g < this.nGenomes; g++) {
             GenomeStats gReport = this.reports[g];
-            this.reporter.writeGenome(gReport);
+            this.getReporter().writeGenome(gReport);
         }
     }
 
     // Finish processing and clean up.
     public void close() {
         // Close the report object.
-        this.reporter.close();
+        this.getReporter().close();
         // Output the time spent.
         String rate = String.format("%6.2f", (double) (System.currentTimeMillis() - start) / (this.gCount * 1000));
         log.info("{} genomes evaluated at {} seconds/genome.", this.gCount, rate);
@@ -433,6 +456,30 @@ public class Evaluator {
      */
     protected File getOutDir() {
         return outDir;
+    }
+
+    /**
+     * Specify the output directory.
+     *
+     * @param outDir	new output directory
+     */
+    protected void setOutDir(File outDir) {
+        this.outDir = outDir;
+        this.getReporter().setOutDir(outDir);
+    }
+
+    /**
+     * @return the reporter
+     */
+    public EvalReporter getReporter() {
+        return reporter;
+    }
+
+    /**
+     * @return the role definition map
+     */
+    protected RoleMap getRoleDefinitions() {
+        return roleDefinitions;
     }
 
 

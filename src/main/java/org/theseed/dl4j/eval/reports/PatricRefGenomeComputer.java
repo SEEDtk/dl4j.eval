@@ -67,9 +67,11 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
         this.referenceBuffer.clear();
         // Loop through the incoming reports, mapping them to reference genomes.
         for (GenomeStats report : reports) {
-            Genome refGenome = this.computeRef(report);
-            if (refGenome != null) {
-                this.put(report.getId(), refGenome);
+            if (report != null) {
+                Genome refGenome = this.computeRef(report);
+                if (refGenome != null) {
+                    this.put(report.getId(), refGenome);
+                }
             }
         }
     }
@@ -97,11 +99,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
             log.info("Genome {} is a reference to itself.  No useful data is available.", refGenomeId);
         } else {
             // Read in the genome and buffer it in case we reuse it.
-            retVal = this.referenceBuffer.get(refGenomeId);
-            if (retVal == null) {
-                retVal = P3Genome.Load(p3, refGenomeId, P3Genome.Details.PROTEINS);
-                this.referenceBuffer.put(refGenomeId, retVal);
-            }
+            retVal = this.referenceBuffer.computeIfAbsent(refGenomeId, k -> P3Genome.Load(p3, k, P3Genome.Details.PROTEINS));
         }
         return retVal;
     }

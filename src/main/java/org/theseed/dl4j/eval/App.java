@@ -33,6 +33,9 @@ public class App
         case "compare" :
             processor = new CompareProcessor();
             break;
+        case "bins" :
+            processor = new BinProcessor();
+            break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
         }

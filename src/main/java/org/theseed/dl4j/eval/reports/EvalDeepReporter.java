@@ -54,11 +54,8 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
 
     /**
      * Construct a deep HTML reporting object.
-     *
-     * @param outDir	target output directory
      */
-    public EvalDeepReporter(File outDir) {
-        super(outDir);
+    public EvalDeepReporter() {
         this.maxProtDist = RefGenomeComputer.MAX_GENOME_DIST;
         this.compareObj = new Compare();
     }

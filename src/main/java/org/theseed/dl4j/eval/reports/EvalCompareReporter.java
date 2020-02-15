@@ -48,10 +48,6 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
 
     private static final Pattern EVIDENCE_PATTERN = Pattern.compile("Annotated with evidence (\\d+) and strength (\\d+\\.\\d+)");
 
-    protected EvalCompareReporter(File outDir) {
-        super(outDir);
-    }
-
     @Override
     public void setEngine(RefGenomeComputer refEngine) {
         this.refEngine = refEngine;

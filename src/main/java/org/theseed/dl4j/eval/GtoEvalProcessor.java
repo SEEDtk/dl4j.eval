@@ -59,6 +59,18 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
     @Option(name = "-o", aliases = { "--output" }, usage = "output file name (if not STDOUT)")
     private File outFile;
 
+    /** output directory */
+    @Option(name = "-O", aliases = { "--outDir" }, metaVar = "outDir", usage = "output directory")
+    private File outputDir;
+
+    /** clear-output flag */
+    @Option(name = "--clear", usage = "clear output directory before starting")
+    private boolean clearOutputDir;
+
+    /** file of reference genome GTO mappings */
+    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
+    private File refGenomeFile;
+
 
     @Override
     public boolean parseCommand(String[] args) {
@@ -66,6 +78,8 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         // Set the defaults.
         this.inFile = null;
         this.outFile = null;
+        this.outputDir = new File(System.getProperty("user.dir"));
+        this.refGenomeFile = null;
         // Save the arguments.
         this.options = args;
         // Parse the command line.
@@ -77,8 +91,10 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
             } else if (this.validateParms()) {
                 // Insure we can read the genome file, if there is one.
                 if (this.inFile != null && ! this.inFile.canRead()) {
-                    throw new FileNotFoundException("Input" + this.inFile + " does not exist or cannot be read.");
+                    throw new FileNotFoundException("Input " + this.inFile + " does not exist or cannot be read.");
                 }
+                // Set up the output directory.
+                this.validateOutputDir(this.outputDir, this.clearOutputDir);
                 // Suppress the summary report.
                 this.suppressSummary();
                 // Denote we're ready to run.
@@ -97,6 +113,8 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
     @Override
     public void run() {
         try {
+            // Set up the reference-genome engine (if necessary).
+            this.setupRefGenomeEngine(this.refGenomeFile);
             // Read in the role maps.
             initializeData();
             // Read in the genome.
@@ -121,7 +139,7 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
             // Retrieve the evaluation report.
             GenomeStats gReport = this.getReport(0);
             log.info("Writing evaluated genome.");
-            gReport.store(genome, this.roleDefinitions, version, options);
+            gReport.store(genome, this.getRoleDefinitions(), version, options);
             if (this.outFile != null) {
                 genome.update(this.outFile);
             } else {

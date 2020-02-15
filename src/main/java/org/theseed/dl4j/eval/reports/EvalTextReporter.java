@@ -25,13 +25,6 @@ public class EvalTextReporter extends EvalReporter {
     /** output stream for the summary report */
     PrintWriter summaryStream;
 
-    /**
-     * @param outDir	output directory
-     */
-    public EvalTextReporter(File outDir) {
-        super(outDir);
-    }
-
     @Override
     protected void initialize(File modelDir) throws IOException {
         // Denote we have no summary output file.

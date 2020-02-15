@@ -59,6 +59,18 @@ public class EvalProcessor extends Evaluator implements ICommand {
     @Argument(index = 1, metaVar = "inDir", usage = "input directory", required = true)
     private File inDir;
 
+    /** output directory */
+    @Option(name = "-O", aliases = { "--outDir" }, metaVar = "outDir", usage = "output directory")
+    private File outputDir;
+
+    /** file of reference genome GTO mappings */
+    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
+    private File refGenomeFile;
+
+    /** clear-output flag */
+    @Option(name = "--clear", usage = "clear output directory before starting")
+    private boolean clearOutputDir;
+
     /**
      * Parse command-line options to specify the parameters of this object.
      *
@@ -70,6 +82,8 @@ public class EvalProcessor extends Evaluator implements ICommand {
         boolean retVal = false;
         // Set the defaults.
         this.update = false;
+        this.refGenomeFile = null;
+        this.outputDir = new File(System.getProperty("user.dir"));
         // Save the parameters.
         this.options = args;
         // Parse the command line.
@@ -83,6 +97,8 @@ public class EvalProcessor extends Evaluator implements ICommand {
                 if (! this.inDir.isDirectory()) {
                     throw new FileNotFoundException("Input " + this.inDir + " is neither a directory or a readable file.");
                 }
+                // Set up the output directory.
+                this.validateOutputDir(this.outputDir, this.clearOutputDir);
                // Denote we're ready to run.
                 retVal = true;
             }
@@ -99,6 +115,8 @@ public class EvalProcessor extends Evaluator implements ICommand {
     @Override
     public void run() {
         try {
+            // Set up the reference-genome engine (if necessary).
+            this.setupRefGenomeEngine(this.refGenomeFile);
             // Read in the role maps.
             initializeData();
             log.info("Genomes will be read from {}.", this.inDir);
@@ -125,7 +143,7 @@ public class EvalProcessor extends Evaluator implements ICommand {
                     Genome gObject = gReport.getGenome();
                     String gId = gObject.getId();
                     log.trace("Updating GTO for {}.", gId);
-                    gReport.store(gObject, this.roleDefinitions, version, options);
+                    gReport.store(gObject, this.getRoleDefinitions(), version, options);
                     File outFile = new File(this.getOutDir(), gId + ".gto");
                     gObject.update(outFile);
                 }

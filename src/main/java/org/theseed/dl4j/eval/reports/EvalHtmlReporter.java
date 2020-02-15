@@ -84,13 +84,6 @@ public class EvalHtmlReporter extends EvalReporter {
     private static final int SHORT_FEATURE = 180;
 
 
-    /**
-     * @param outDir	output directory
-     */
-    public EvalHtmlReporter(File outDir) {
-        super(outDir);
-    }
-
     @Override
     protected void initialize(File modelDir) throws IOException {
     }
@@ -168,6 +161,11 @@ public class EvalHtmlReporter extends EvalReporter {
         qualityRows(gReport, detailRows);
         Html.detailRow(detailRows, "Overpresent Roles", Html.numCell(overCount));
         Html.detailRow(detailRows, "Underpresent Roles", Html.numCell(underCount));
+        // Add the coverage if this came from a bin.
+        double coverage = gReport.getGenome().getBinCoverage();
+        if (coverage > 0.0) {
+            Html.detailRow(detailRows, "Mean Contig Coverage", Html.numCell(coverage));
+        }
         // Ask for extra tables.
         DomContent extraHtml = this.advancedGenomeAnalysis(gReport);
         // Format the page.

@@ -78,8 +78,8 @@ public abstract class EvalReporter implements AutoCloseable {
      *
      * @param outDir	output directory for reports
      */
-    protected EvalReporter(File outDir) {
-        this.outDir = outDir;
+    protected EvalReporter() {
+        this.outDir = null;
         this.summary = true;
         this.details = true;
         this.version = null;
@@ -93,20 +93,20 @@ public abstract class EvalReporter implements AutoCloseable {
      *
      * @return a reporter object for the specified output
      */
-    public static EvalReporter create(File outDir, Type type) {
+    public static EvalReporter create(Type type) {
         EvalReporter retVal;
         switch (type) {
         case TEXT :
-            retVal = new EvalTextReporter(outDir);
+            retVal = new EvalTextReporter();
             break;
         case HTML :
-            retVal = new EvalHtmlReporter(outDir);
+            retVal = new EvalHtmlReporter();
             break;
         case DEEP :
-            retVal = new EvalDeepReporter(outDir);
+            retVal = new EvalDeepReporter();
             break;
         case COMPARE :
-            retVal = new EvalCompareReporter(outDir);
+            retVal = new EvalCompareReporter();
             break;
         default :
             throw new RuntimeException("Unsupported output format.");
@@ -145,6 +145,14 @@ public abstract class EvalReporter implements AutoCloseable {
         this.roleDefinitions = roleMap;
         // Initalize the subclass.
         this.initialize(modelDir);
+        // Clear the counters.
+        this.cleanCount = 0;
+        this.completeCount = 0;
+        this.consistentCount = 0;
+        this.genomeCount = 0;
+        this.goodCount = 0;
+        this.goodSeedCount = 0;
+        this.understoodCount = 0;
         // Start the summary report.
         if (this.summary)
             startSummary();
@@ -343,5 +351,15 @@ public abstract class EvalReporter implements AutoCloseable {
      * @param reports	array of genome evaluations
      */
     public abstract void setupGenomes(GenomeStats[] reports);
+
+    /**
+     * Specify the output directory.
+     *
+     * @param outDir	proposed output directory
+     */
+    public void setOutDir(File outDir) {
+        this.outDir = outDir;
+
+    }
 
 }
