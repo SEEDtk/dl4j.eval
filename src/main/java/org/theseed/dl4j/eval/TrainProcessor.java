@@ -84,8 +84,6 @@ public class TrainProcessor implements ICommand {
     @Argument(index = 2, metaVar = "120", usage = "testing set size", required = true)
     private int testSize;
 
-    /** minimum acceptable accuracy */
-
 
     /**
      * Parse command-line options to specify the parameters of this object.

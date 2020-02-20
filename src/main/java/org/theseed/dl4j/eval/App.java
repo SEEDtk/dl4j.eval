@@ -36,6 +36,9 @@ public class App
         case "bins" :
             processor = new BinProcessor();
             break;
+        case "build" :
+        	processor = new BuildProcessor();
+        	break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
         }

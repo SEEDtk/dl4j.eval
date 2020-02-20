@@ -59,7 +59,7 @@ public class Evaluator {
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(Evaluator.class);
     /** array of roles to use */
-    protected ArrayList<String> roles;
+    protected List<String> roles;
     /** array of genome statistics objects */
     private GenomeStats[] reports;
     /** number of genomes read in this batch */
@@ -252,14 +252,9 @@ public class Evaluator {
         this.loadVersion();
         log.info("Evaluation database version is {}.", this.version);
         // Read in the consistency roles.
-        this.roles = new ArrayList<String>(2800);
         File rolesToUseFile = new File(this.modelDir, "roles.to.use");
         log.info("Reading consistency roles from {}.", rolesToUseFile);
-        try (TabbedLineReader rolesToUse = new TabbedLineReader(rolesToUseFile, 3)) {
-            for (TabbedLineReader.Line line : rolesToUse) {
-                this.roles.add(line.get(0));
-            }
-        }
+        this.roles = readRolesToUse(rolesToUseFile);
         log.info("{} roles will be used for consistency check.", this.roles.size());
         // Read in the role definition file.
         File roleDefineFile = new File(this.modelDir, "roles.in.subsystems");
@@ -271,6 +266,20 @@ public class Evaluator {
         this.compList = UniversalRoles.Load(compFile);
         // Create the roles-used array for the consistency checker.
         this.rolesUsed = new boolean[this.roles.size()];
+    }
+
+    /**
+     * @param rolesToUseFile
+     * @throws IOException
+     */
+    public static List<String> readRolesToUse(File rolesToUseFile) throws IOException {
+        List<String> retVal = new ArrayList<String>(2800);
+        try (TabbedLineReader rolesToUse = new TabbedLineReader(rolesToUseFile, 3)) {
+            for (TabbedLineReader.Line line : rolesToUse) {
+                retVal.add(line.get(0));
+            }
+        }
+        return retVal;
     }
 
     /**
