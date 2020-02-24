@@ -168,7 +168,7 @@ public class BinProcessor extends Evaluator implements ICommand {
                         GenomeStats gReport = this.getReport(i);
                         Genome gObject = gReport.getGenome();
                         String gId = gObject.getId();
-                        log.trace("Updating GTO for {}.", gId);
+                        log.debug("Updating GTO for {}.", gId);
                         gReport.store(gObject, this.getRoleDefinitions(), version, options);
                         gObject.update(binFiles[i]);
                         indexStream.format("%s\t%s\t%d%n",

@@ -39,7 +39,7 @@ import org.theseed.utils.ICommand;
  * --terse		do not write the individual output files, only the summary
  * --clear		clear the output directory before processing
  * --format		the format of the output reports
- * --ref		file of reference-genome mappings (the default is to use the reference genome of the bin)
+ * --ref		file of reference-genome mappings (the default is to use the representative genome)
  *
  * @author Bruce Parrello
  *

@@ -61,6 +61,8 @@ public class TrainProcessor implements ICommand {
     double[] ratings;
     /** label file */
     File labelFile;
+    /** role file subdirectory */
+    File rolesDir;
 
     // COMMAND LINE
 
@@ -119,6 +121,14 @@ public class TrainProcessor implements ICommand {
                     // Add the testing set size to the argument list.
                     this.basicArgs.add("--testSize");
                     this.basicArgs.add(Integer.toString(this.testSize));
+                    // Insure we have the Roles subdirectory.
+                    this.rolesDir = new File(this.modelDir, "Roles");
+                    if (! rolesDir.isDirectory()) {
+                        log.info("Creating Roles directory in {}.", this.modelDir);
+                        boolean ok = rolesDir.mkdir();
+                        if (! ok)
+                            throw new IOException("Error creating Roles directory.");
+                    }
                     // We made it this far, we can run the application.
                     retVal = true;
                 }
@@ -171,9 +181,6 @@ public class TrainProcessor implements ICommand {
                 theseParms.add(role);
                 // Get the maximum label for this role.
                 int maxLabel = this.roleMap.getCount(role);
-                // Create the model and trial file names.
-                theseParms.add("--name");
-                theseParms.add(role + ".ser");
                 // Add the comment.
                 theseParms.add("--comment");
                 theseParms.add(String.format("Role %d: %s, maximum count %d", i, role, maxLabel));
@@ -193,7 +200,8 @@ public class TrainProcessor implements ICommand {
                     processor.run();
                     ratings[i] = processor.getRating();
                     if (ratings[i] >= this.minAcc) {
-                        processor.saveModelForced();
+                        // Here we can keep this model.
+                        processor.saveModelForced(new File(this.rolesDir, role + ".ser"));
                     }
                 } else {
                     throw new RuntimeException("Error processing role.");

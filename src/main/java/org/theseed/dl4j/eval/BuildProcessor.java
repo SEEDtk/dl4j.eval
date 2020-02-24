@@ -78,7 +78,7 @@ public class BuildProcessor extends BaseProcessor {
         if (! this.rawTable.canRead())
             throw new FileNotFoundException(this.rawTable + " is not found or unreadable.");
         // Read in the testing set.
-        try (TabbedLineReader testStream = new TabbedLineReader(new File(this.modelDir, "test.set.tbl"), 1)) {
+        try (TabbedLineReader testStream = new TabbedLineReader(new File(this.modelDir, "test.set.tbl"))) {
             this.testSet = new HashSet<String>();
             for (TabbedLineReader.Line line : testStream) {
                 this.testSet.add(line.get(0));

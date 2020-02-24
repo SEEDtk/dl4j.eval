@@ -142,7 +142,7 @@ public class EvalProcessor extends Evaluator implements ICommand {
                     GenomeStats gReport = this.getReport(g);
                     Genome gObject = gReport.getGenome();
                     String gId = gObject.getId();
-                    log.trace("Updating GTO for {}.", gId);
+                    log.debug("Updating GTO for {}.", gId);
                     gReport.store(gObject, this.getRoleDefinitions(), version, options);
                     File outFile = new File(this.getOutDir(), gId + ".gto");
                     gObject.update(outFile);

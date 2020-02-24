@@ -59,16 +59,19 @@ public class FileRefGenomeComputer extends RefGenomeComputer {
     protected void initialize(GenomeStats[] reports) {
         // Loop through the genomes, computing the best GTO.
         for (GenomeStats report : reports) {
-            Genome genome = report.getGenome();
-            Iterator<TaxItem> taxonomy = genome.taxonomy();
-            Genome refGenome = null;
-            // Find the reference genome for the smallest taxonomic group.
-            while (taxonomy.hasNext() && refGenome == null) {
-                String taxId = taxonomy.next().getId();
-                refGenome = this.refMap.get(taxId);
+            // Only process reports with data in them.
+            if (report != null) {
+                Genome genome = report.getGenome();
+                Iterator<TaxItem> taxonomy = genome.taxonomy();
+                Genome refGenome = null;
+                // Find the reference genome for the smallest taxonomic group.
+                while (taxonomy.hasNext() && refGenome == null) {
+                    String taxId = taxonomy.next().getId();
+                    refGenome = this.refMap.get(taxId);
+                }
+                if (refGenome != null)
+                    this.put(genome.getId(), refGenome);
             }
-            if (refGenome != null)
-                this.put(genome.getId(), refGenome);
         }
      }
 

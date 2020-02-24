@@ -36,23 +36,23 @@ public class BinRefGenomeComputer extends RefGenomeComputer {
     protected void initialize(GenomeStats[] reports) {
         // Loop through the binned genomes.
         for (GenomeStats gReport : reports) {
-            Genome genome = gReport.getGenome();
-            // Get the reference genome ID.
-            String refGenomeId = genome.getBinRefGenomeId();
-            if (refGenomeId != null) {
-                // Compute the file containing the reference genome.
-                File refGenomeFile = new File(this.binDir, refGenomeId + ".json");
-                if (refGenomeFile.canRead()) {
-                    try {
-                        // Attach the reference genome to this genome.
-                        Genome refGenome = new Genome(refGenomeFile);
-                        this.put(genome.getId(), refGenome);
-
-                    } catch (IOException e) {
-                        throw new UncheckedIOException("Error loading reference genome " + refGenomeId + ".", e);
+            if (gReport != null) {
+                Genome genome = gReport.getGenome();
+                // Get the reference genome ID.
+                String refGenomeId = genome.getBinRefGenomeId();
+                if (refGenomeId != null) {
+                    // Compute the file containing the reference genome.
+                    File refGenomeFile = new File(this.binDir, refGenomeId + ".json");
+                    if (refGenomeFile.canRead()) {
+                        try {
+                            // Attach the reference genome to this genome.
+                            Genome refGenome = new Genome(refGenomeFile);
+                            this.put(genome.getId(), refGenome);
+                        } catch (IOException e) {
+                            throw new UncheckedIOException("Error loading reference genome " + refGenomeId + ".", e);
+                        }
                     }
                 }
-
             }
         }
     }

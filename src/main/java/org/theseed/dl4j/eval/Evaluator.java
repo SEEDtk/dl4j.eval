@@ -200,8 +200,8 @@ public class Evaluator {
     protected void validateOutputDir(File outputDir, boolean clearOutputDir) throws IOException {
         // Check the output directory.
         if (! outputDir.exists()) {
-            log.info("Creating directory {}.", this.outDir);
-            if (! this.outDir.mkdir()) {
+            log.info("Creating directory {}.", outputDir);
+            if (! outputDir.mkdirs()) {
                 throw new IOException("Could not create output directory.");
             }
         } else if (! outputDir.isDirectory()) {
@@ -297,7 +297,7 @@ public class Evaluator {
      */
     protected void processGenome(int iGenome, Genome genome) {
         this.gCount++;
-        log.trace("Processing #{} {}: {}.", gCount, genome.getId(), genome.getName());
+        log.debug("Processing #{} {}: {}.", gCount, genome.getId(), genome.getName());
         // Create the reporting object.
         GenomeStats gReport = new GenomeStats(genome);
         this.reports[iGenome] = gReport;
@@ -345,7 +345,7 @@ public class Evaluator {
             File modelFile = new File(this.roleDir, role + ".ser");
             if (modelFile.exists()) {
                 this.rolesUsed[iRole] = true;
-                log.trace("Processing role #{} {}.", iRole, role);
+                log.debug("Processing role #{} {}.", iRole, role);
                 // Create the input matrix.  It contains all the columns but the one for our target role.
                 for (int i = 0; i < this.nGenomes; i++) {
                     for (int j = 0; j < iRole; j++) {
