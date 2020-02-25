@@ -238,7 +238,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      */
     protected void advancedGenomeSetup(GenomeStats gReport) {
         // Compute the reference genome.
-        this.refGenomeObj = this.refEngine.ref(gReport.getId());
+        this.refGenomeObj = this.refEngine.ref(gReport.getGenome());
         if (this.refGenomeObj == null) {
             this.refGenomeId = null;
         } else {

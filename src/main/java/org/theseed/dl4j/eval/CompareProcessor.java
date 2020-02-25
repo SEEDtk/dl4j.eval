@@ -6,10 +6,16 @@ package org.theseed.dl4j.eval;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedSet;
+import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -20,11 +26,13 @@ import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.genome.Compare;
+import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeDirectory;
 import org.theseed.locations.Location;
 import org.theseed.reports.Html;
+import org.theseed.sequence.MD5Hex;
 import org.theseed.utils.ICommand;
 
 import ch.qos.logback.classic.Level;
@@ -35,16 +43,18 @@ import static j2html.TagCreator.*;
 
 /**
  * This class produces a web site showing an ORF-by-ORF comparison of genomes with identical contigs.
- * The positional parameters are the name of an input directory containing GTOs and the name of an
- * output directory.  The GTOs will be loaded into memory and then processed individually.  For each,
- * we will look for a genome that has identical contigs and then produce a report comparing the
- * ORFs.
+ * The positional parameters are the name of an input directory containing GTOs, a reference directory
+ * containing the GTOs for comparison, and the name of an output directory.  For each input genome,
+ * we will find a matching reference genome and then produce a report comparing the ORFs.
  *
  * The command-line options are as follows.
  *
  * -v	produce more detailed status output
  *
  * --clear	erase output directory before starting
+ *
+ * --refs	name of a directory containing the genomes to compare to the genomes in the first directory
+ * 			the default is to compare genomes in the first directory with each other
  *
  * @author Bruce Parrello
  *
@@ -53,12 +63,12 @@ public class CompareProcessor implements ICommand {
 
     // FIELDS
 
-    /** list of genomes in memory */
-    private List<Genome> genomes;
+    /** map of reference genomes, MD5 to file name */
+    private Map<String, File> refGenomes;
     /** comparison processor */
     private Compare comparator;
-    /** list of summary table rows */
-    private List<DomContent> summaryRows;
+    /** map of scores to summary table rows with that score, used to sort the output */
+    private TreeMap<Double, Collection<DomContent>> summaryData;
     /** list of detail table rows */
     private List<DomContent> tableRows;
     /** logging facility */
@@ -67,6 +77,8 @@ public class CompareProcessor implements ICommand {
     private Genome genome1;
     /** second genome for comparison */
     private Genome genome2;
+    /** genome identity computer */
+    private MD5Hex md5Computer;
 
 
     // COMMAND LINE OPTIONS
@@ -83,10 +95,16 @@ public class CompareProcessor implements ICommand {
     @Option(name = "-v", aliases = { "--verbose", "--debug" }, usage = "show more detailed progress messages")
     private boolean debug;
 
-    @Argument(index = 0, usage = "input directory", required = true)
+    /** input genome directory */
+    @Argument(index = 0, metaVar = "inDir", usage = "input directory", required = true)
     private File inDir;
 
-    @Argument(index = 1, usage = "output directory", required = true)
+    /** reference genome directory */
+    @Argument(index = 1, metaVar = "refDir", usage = "comparison genome directory (if not input directory)")
+    private File refDir;
+
+    /** output directory */
+    @Argument(index = 2, metaVar = "outDir", usage = "output directory", required = true)
     private File outDir;
 
     @Override
@@ -95,6 +113,7 @@ public class CompareProcessor implements ICommand {
         // Set the defaults.
         this.debug = false;
         this.clearOutDir = false;
+        this.refDir = null;
         // Parse the command line.
         CmdLineParser parser = new CmdLineParser(this);
         try {
@@ -104,6 +123,8 @@ public class CompareProcessor implements ICommand {
             } else {
                 if (! this.inDir.isDirectory()) {
                     throw new FileNotFoundException("Input directory " + this.inDir + " is not found or invalid.");
+                } else if (! this.refDir.isDirectory()) {
+                    throw new FileNotFoundException("Reference input directory " + this.refDir + " is not found or invalid.");
                 } else {
                     if (! this.outDir.exists()) {
                         log.info("Creating output directory {}.", this.outDir);
@@ -142,33 +163,47 @@ public class CompareProcessor implements ICommand {
                 ch.qos.logback.classic.Logger logger = loggerContext.getLogger("org.theseed");
                 logger.setLevel(Level.toLevel("TRACE"));
             }
-            // Create the comparator.
+            // Create the comparator and the MD5 calculator.
             this.comparator = new Compare();
-            // Initialize the summary row table.
-            this.summaryRows = new ArrayList<DomContent>();
-            this.summaryRows.add(tr(th("Match Score").withClass("num"), th("Genome 1 ID"), th("Genome 1 Name"), th("Genome 2 ID"), th("Genome 2 Name")));
+            this.md5Computer = new MD5Hex();
+            // Initialize the summary row table.  Note the header is given a low score to sort it to the top.
+            this.summaryData = new TreeMap<Double, Collection<DomContent>>();
+            this.summaryData.put(-1.0, Collections.singleton(tr(th("Match Score").withClass("num"), th("Genome 1 ID"), th("Genome 1 Name"), th("Genome 2 ID"), th("Genome 2 Name"))));
+            // Get all the reference genomes.  We would like to hold them in memory, but it is too much.
+            // Instead, we map the genome MD5 to its file name.
+            log.info("Analyzing reference genomes from {}.", this.refDir);
+            GenomeDirectory refGenomeDir = new GenomeDirectory(this.refDir);
+            this.refGenomes = new HashMap<String, File>();
+            for (Genome refGenome : refGenomeDir) {
+                // Get the MD5 for all the contig IDs.
+                String key = this.md5Computer.sequenceMD5(refGenome);
+                // Map the file name to the MD5.
+                this.refGenomes.put(key, refGenomeDir.currFile());
+            }
             // Get all the genomes.
-            this.genomes = new ArrayList<Genome>();
             log.info("Reading genomes from {}.", this.inDir);
             GenomeDirectory genomesIn = new GenomeDirectory(this.inDir);
             for (Genome genome : genomesIn) {
-                String genomeId = genome.getId();
-                String genomeName = genome.getName();
-                log.info("Processing genome {} {}.", genomeId, genomeName);
+                log.info("Processing genome {}.", genome);
                 // Search for a match.
-                int i = 0;
-                while (i < this.genomes.size() && ! this.comparator.compare(genome, this.genomes.get(i))) i++;
-                if (i >= this.genomes.size()) {
-                    // No match found.  Add this genome to the array.
-                    this.genomes.add(genome);
+                String key = this.md5Computer.sequenceMD5(genome);
+                File refGenomeFile = this.refGenomes.get(key);
+                if (refGenomeFile == null) {
+                    log.warn("No match found for {}", genome);
                 } else {
-                    // Delete the match from the array and do a compare.
-                    this.genome1 = this.genomes.remove(i);
-                    this.genome2 = genome;
+                    // Read the reference genome.
+                    this.genome1 = genome;
+                    this.genome2 = new Genome(refGenomeFile);
+                    // Map the contigs.
+                    mapContigs();
+                    // Do a compare.
                     this.compareReport();
                 }
             }
             log.info("Writing summary page.");
+            Collection<DomContent> summaryRows = new ArrayList<DomContent>(genomesIn.size());
+            for (Collection<DomContent> summaryEntry : summaryData.values())
+                summaryRows.addAll(summaryEntry);
             String page = Html.page("Summary of ORF Comparisons", Html.formatTable("Genome Comparisons", summaryRows));
             File outFile = new File(this.outDir, "index.html");
             FileUtils.writeStringToFile(outFile, page, "UTF-8");
@@ -176,6 +211,29 @@ public class CompareProcessor implements ICommand {
             e.printStackTrace();
         }
 
+    }
+
+    /**
+     * Change the name of the reference genome (genome1) contig IDs in the features to match the IDs of the contigs
+     * in the target genome (genome2).
+     *
+     * @throws UnsupportedEncodingException
+     */
+    private void mapContigs() throws UnsupportedEncodingException {
+        // Build a map of MD5s to IDs for each contig in the target genome.
+        Map<String,String> md5Map = new HashMap<String, String>(this.genome2.getContigCount());
+        for (Contig contig2 : genome2.getContigs()) {
+            String contigKey = this.md5Computer.sequenceMD5(contig2.getSequence());
+            md5Map.put(contigKey, contig2.getId());
+        }
+        // Now map each contig ID in the reference genome to the appropriate target genome contig ID.
+        for (Contig contig1 : genome1.getContigs()) {
+            String contigKey = this.md5Computer.sequenceMD5(contig1.getSequence());
+            String contig2Id = md5Map.get(contigKey);
+            // The two genomes are DNA-identical, so there should always be a matching contig ID.
+            assert(contig2Id != null);
+            genome1.updateContigId(contig1, contig2Id);
+        }
     }
 
     /**
@@ -247,7 +305,7 @@ public class CompareProcessor implements ICommand {
         // Create the summary line and add it to the summary rows.
         DomContent scoreCell = td(a(String.format("%8.2f", score)).withHref(fileName)).withClass("num");
         DomContent summaryRow = tr(scoreCell, td(genome1.genomeLink()), td(genome1.getName()), td(genome2.genomeLink()), td(genome2.getName()));
-        this.summaryRows.add(summaryRow);
+        this.summaryData.computeIfAbsent(score, k -> new ArrayList<DomContent>()).add(summaryRow);
     }
 
     /**

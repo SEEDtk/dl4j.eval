@@ -61,11 +61,12 @@ public abstract class RefGenomeComputer {
      * @return the reference genome for a specified genome to be displayed,
      * 		   or NULL if there is no useful reference
      *
-     * @param genomeId		ID of the genome being displayed
+     * @param genome		genome being displayed
      */
-    public Genome ref(String genomeId) {
+    public Genome ref(Genome genome) {
+        String genomeId = genome.getId();
         Genome retVal = master.get(genomeId);
-        if (retVal != null && genomeId.contentEquals(retVal.getId())) {
+        if (genome.identical(retVal)) {
             log.info("{} is a reference for itself:  no useful information.", genomeId);
             retVal = null;
         }

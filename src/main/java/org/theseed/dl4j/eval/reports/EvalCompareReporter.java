@@ -74,7 +74,7 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
         String genomeId = newGenome.getId();
         File outFile = this.htmlFile(genomeId);
         // Get the reference genome.  Only proceed if we have one.
-        Genome refGenome = this.refEngine.ref(genomeId);
+        Genome refGenome = this.refEngine.ref(newGenome);
         if (refGenome != null) {
             // Compare the genomes.  Only proceed if the compare works.
             boolean compared = this.compareObj.compare(newGenome, refGenome);
