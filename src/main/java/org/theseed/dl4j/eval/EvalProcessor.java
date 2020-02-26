@@ -150,7 +150,7 @@ public class EvalProcessor extends Evaluator implements ICommand {
             }
             // Finish processing.
             this.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

@@ -179,7 +179,7 @@ public class BinProcessor extends Evaluator implements ICommand {
                 // Finish off the reporting.
                 this.close();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

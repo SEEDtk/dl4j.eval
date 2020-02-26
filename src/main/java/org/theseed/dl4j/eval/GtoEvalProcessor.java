@@ -6,7 +6,6 @@ package org.theseed.dl4j.eval;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
@@ -147,7 +146,7 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
             }
             // Finish processing.
             this.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
 

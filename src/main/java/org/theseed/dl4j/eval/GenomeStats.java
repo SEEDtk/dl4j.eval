@@ -3,8 +3,10 @@
  */
 package org.theseed.dl4j.eval;
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -20,6 +22,7 @@ import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
+import org.theseed.sequence.MD5Hex;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;
@@ -589,8 +592,11 @@ public class GenomeStats {
      * @param roles		role definition table
      * @param version	version string for the evaluation database
      * @param options	original command-line arguments
+     *
+     * @throws NoSuchAlgorithmException
+     * @throws UnsupportedEncodingException
      */
-    public void store(Genome genome, RoleMap roles, String version, String[] options) {
+    public void store(Genome genome, RoleMap roles, String version, String[] options) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         // Record this as an analysis event.
         JsonObject gto = genome.toJson();
         JsonArray events = (JsonArray) gto.get("analysis_events");
@@ -653,6 +659,10 @@ public class GenomeStats {
         problematicRoles.put("over_present", over);
         problematicRoles.put("under_present", under);
         quality.put("problematic_roles_report", problematicRoles);
+        if (genome.hasContigs()) {
+            MD5Hex md5Engine = new MD5Hex();
+            quality.put("dna_md5", md5Engine.sequenceMD5(genome));
+        }
     }
 
     /**
