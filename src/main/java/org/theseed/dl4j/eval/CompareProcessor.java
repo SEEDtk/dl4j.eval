@@ -53,9 +53,6 @@ import static j2html.TagCreator.*;
  *
  * --clear	erase output directory before starting
  *
- * --refs	name of a directory containing the genomes to compare to the genomes in the first directory
- * 			the default is to compare genomes in the first directory with each other
- *
  * @author Bruce Parrello
  *
  */
