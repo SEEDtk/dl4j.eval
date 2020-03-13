@@ -252,6 +252,8 @@ public class CompareProcessor implements ICommand {
         // These are used to compute the match score.
         int matches = 0;
         int total = 0;
+        int extraLeft = 0;
+        int extraRight = 0;
         // Get iterators through the sets.
         Iterator<Feature> iter1 = f1List.iterator();
         Iterator<Feature> iter2 = f2List.iterator();
@@ -264,11 +266,13 @@ public class CompareProcessor implements ICommand {
                 // F1 is first.  It is an orphan.
                 this.tableRow(f1, null);
                 f1 = this.comparator.next(iter1);
+                extraLeft++;
                 total++;
             } else if (comp > 0) {
                 // F2 is first.  It is an orphan.
                 this.tableRow(null, f2);
                 f2 = this.comparator.next(iter2);
+                extraRight++;
                 total++;
             } else {
                 // Both are in the same ORF.
@@ -283,11 +287,13 @@ public class CompareProcessor implements ICommand {
         while (f1 != null) {
             this.tableRow(f1, null);
             f1 = this.comparator.next(iter1);
+            extraLeft++;
             total++;
         }
         while (f2 != null) {
             this.tableRow(null, f2);
             f2 = this.comparator.next(iter2);
+            extraRight++;
             total++;
         }
         // Create the web page.
@@ -295,9 +301,11 @@ public class CompareProcessor implements ICommand {
         double score = (double) (matches * 100) / total;
         String title = "ORF Comparison of " + genome1.getId() + " and " + genome2.getId();
         String page = Html.page(title, h1(title),
-                ul(li(join("Genome 1 is", genome1.genomeLink(), genome1.getName())),
-                li(join("Genome 2 is ", genome2.genomeLink(), genome2.getName())),
-                li(String.format("%4.2f percent of the ORFs matched.", score))),
+                ul(li(join("Genome 1 is", genome1.genomeLink(), genome1.getName(),
+                        String.format("and has %d extra proteins.", extraLeft))),
+                li(join("Genome 2 is ", genome2.genomeLink(), genome2.getName(),
+                        String.format("and has %d extra proteins.", extraRight))),
+                li(String.format("%4.2f percent of the ORFs matched out of %d total.", score, total))),
                 Html.formatTable("Content of each ORF", tableRows));
         String fileName = genome1.getId() + ".html";
         File outFile = new File(this.outDir, fileName);
