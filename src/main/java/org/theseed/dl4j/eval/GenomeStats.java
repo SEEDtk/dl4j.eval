@@ -163,7 +163,7 @@ public class GenomeStats {
             // Run through all the features of the genome, counting.
             for (Feature feat : genome.getFeatures()) {
                 this.fidCount++;
-                if (feat.isCDS()) {
+                if (feat.isProtein()) {
                     this.pegCount++;
                     if (Feature.isHypothetical(feat.getFunction())) {
                         this.hypoCount++;
