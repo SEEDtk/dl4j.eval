@@ -26,7 +26,7 @@ import org.theseed.io.TabbedLineReader;
 public class FileRefGenomeComputer extends RefGenomeComputer {
 
     /** map of taxon IDs to reference genomes */
-    private Map<String, Genome> refMap;
+    private Map<Integer, Genome> refMap;
 
     /**
      * Create a file-based reference-genome engine.
@@ -36,16 +36,16 @@ public class FileRefGenomeComputer extends RefGenomeComputer {
      * @throws IOException
      */
     public FileRefGenomeComputer(File refGenomeFile) throws IOException {
-        this.refMap = new HashMap<String, Genome>();
+        this.refMap = new HashMap<Integer, Genome>();
         log.info("Reading reference genomes from {}.", refGenomeFile);
         // Get the directory containing the reference genome file.  The file references are relative to this.
         File baseDir = refGenomeFile.getAbsoluteFile().getParentFile();
         // This is a headerless file with two columns.
         try (TabbedLineReader refFile = new TabbedLineReader(refGenomeFile, 2)) {
             for (TabbedLineReader.Line line : refFile) {
-                String taxId = line.get(0);
+                int taxId = line.getInt(0);
                 // Only proceed if this is NOT a blank line.
-                if (! taxId.isEmpty()) {
+                if (taxId > 0) {
                     File gtoFile = new File(baseDir, line.get(1));
                     Genome gto = new Genome(gtoFile);
                     this.refMap.put(taxId, gto);
@@ -66,7 +66,7 @@ public class FileRefGenomeComputer extends RefGenomeComputer {
                 Genome refGenome = null;
                 // Find the reference genome for the smallest taxonomic group.
                 while (taxonomy.hasNext() && refGenome == null) {
-                    String taxId = taxonomy.next().getId();
+                    int taxId = taxonomy.next().getId();
                     refGenome = this.refMap.get(taxId);
                 }
                 if (refGenome != null)
