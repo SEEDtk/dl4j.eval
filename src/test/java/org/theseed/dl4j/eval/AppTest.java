@@ -16,7 +16,8 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
-import org.theseed.proteins.kmers.ProteinKmers;
+import org.theseed.sequence.ProteinKmers;
+import org.theseed.sequence.SequenceKmers;
 
 /**
  * Unit test for evaluation structures
@@ -238,7 +239,7 @@ public class AppTest extends TestCase
         assertFalse(uniRoles.contains("MbthLikeNrpsChap4"));
         assertThat(uniRoles.size(), equalTo(411));
         uniRoles = compList.get(1);
-        assertThat(uniRoles.inGroup(p1773_3521), equalTo(ProteinKmers.INFINITY));
+        assertThat(uniRoles.inGroup(p1773_3521), equalTo(SequenceKmers.INFINITY));
         assertThat(uniRoles.inGroup(p563191_3), equalTo(0));
         assertThat(uniRoles.inGroup(p1262687_3), equalTo(0));
         assertThat(uniRoles.inGroup(p1104577_5), equalTo(0));

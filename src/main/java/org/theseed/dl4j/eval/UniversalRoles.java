@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.Set;
 
-import org.theseed.proteins.kmers.ProteinKmers;
+import org.theseed.sequence.ProteinKmers;
 
 /**
  * This object describes a completeness class and lists its universal roles.
