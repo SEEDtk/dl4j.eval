@@ -89,44 +89,40 @@ public class BuildProcessor extends BaseProcessor {
     }
 
     @Override
-    public void run() {
-        try {
-            // Read in the roles to use.
-            log.info("Reading {}.", this.rolesToUse);
-            this.roleList = Evaluator.readRolesToUse(rolesToUse);
-            // This will map each genome to its roles.
-            this.genomeMap = new HashMap<String, CountMap<String>>();
-            // Now read the raw table.
-            log.info("Reading {}.", this.rawTable);
-            try (TabbedLineReader rawStream = new TabbedLineReader(this.rawTable, 3)) {
-                for (TabbedLineReader.Line line : rawStream) {
-                    // Count this role as belonging to this genome.
-                    String genome = Feature.genomeOf(line.get(2));
-                    String role = line.get(1);
-                    CountMap<String> genomeCounts = this.genomeMap.computeIfAbsent(genome, k -> new CountMap<String>());
-                    genomeCounts.count(role);
-                }
+    public void runCommand() throws Exception {
+        // Read in the roles to use.
+        log.info("Reading {}.", this.rolesToUse);
+        this.roleList = Evaluator.readRolesToUse(rolesToUse);
+        // This will map each genome to its roles.
+        this.genomeMap = new HashMap<String, CountMap<String>>();
+        // Now read the raw table.
+        log.info("Reading {}.", this.rawTable);
+        try (TabbedLineReader rawStream = new TabbedLineReader(this.rawTable, 3)) {
+            for (TabbedLineReader.Line line : rawStream) {
+                // Count this role as belonging to this genome.
+                String genome = Feature.genomeOf(line.get(2));
+                String role = line.get(1);
+                CountMap<String> genomeCounts = this.genomeMap.computeIfAbsent(genome, k -> new CountMap<String>());
+                genomeCounts.count(role);
             }
-            log.info("{} genomes found in input.", genomeMap.size());
-            // Now write the training set.
-            try (PrintWriter outStream = new PrintWriter(new File(this.modelDir, "training.tbl"))) {
-                // First we write the header.
-                String roles = this.roleList.stream().collect(Collectors.joining("\t"));
-                outStream.format("genome\t%s%n", roles);
-                log.info("Writing testing set.");
-                // Now we write the testing set genomes.
-                for (String genome : this.testSet) {
+        }
+        log.info("{} genomes found in input.", genomeMap.size());
+        // Now write the training set.
+        try (PrintWriter outStream = new PrintWriter(new File(this.modelDir, "training.tbl"))) {
+            // First we write the header.
+            String roles = this.roleList.stream().collect(Collectors.joining("\t"));
+            outStream.format("genome\t%s%n", roles);
+            log.info("Writing testing set.");
+            // Now we write the testing set genomes.
+            for (String genome : this.testSet) {
+                outputGenome(outStream, genome);
+            }
+            // Finally the rest of the genomes.
+            log.info("Writing training set.");
+            for (String genome : this.genomeMap.keySet()) {
+                if (! this.testSet.contains(genome))
                     outputGenome(outStream, genome);
-                }
-                // Finally the rest of the genomes.
-                log.info("Writing training set.");
-                for (String genome : this.genomeMap.keySet()) {
-                    if (! this.testSet.contains(genome))
-                        outputGenome(outStream, genome);
-                }
             }
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
