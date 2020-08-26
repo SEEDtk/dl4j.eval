@@ -9,23 +9,20 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.kohsuke.args4j.Argument;
+import org.kohsuke.args4j.Option;
 import org.theseed.counters.CountMap;
 import org.theseed.genome.Feature;
+import org.theseed.io.Shuffler;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.utils.BaseProcessor;
 
 /**
  * This command reads a raw.table and a roles.to.use and builds a training file.  Both these files are
  * output by one of the various build-role-tables scripts.
- *
- * In addition, the file test.set.tbl should contain the IDs of the genomes to be used as the testing
- * set.
  *
  * The training file contains the roles in roles.to.use across the top as column headers and has one row
  * per genome.  In each column of a genome's record is the number of times the role occurs in that genome.
@@ -37,6 +34,7 @@ import org.theseed.utils.BaseProcessor;
  *
  * -h	display usage information
  * -v	display more detailed progress messages on the log
+ * -t	size for the testing set
  *
  *
  * @author Bruce Parrello
@@ -49,8 +47,6 @@ public class BuildProcessor extends BaseProcessor {
     private File rolesToUse;
     /** input role occurrence table */
     private File rawTable;
-    /** testing set genomes */
-    private Set<String> testSet;
     /** list of roles to use */
     private List<String> roleList;
     /** role counts per genome */
@@ -58,12 +54,18 @@ public class BuildProcessor extends BaseProcessor {
 
     // COMMAND-LINE OPTIONS
 
+    /** size of the testing set */
+    @Option(name = "-t", aliases = { "--testSize" }, metaVar = "200", usage = "size for the testing set")
+    private int testSize;
+
     /** input / working directory */
     @Argument(index = 0, usage = "input directory, also used for output file", required = true)
     private File modelDir;
 
     @Override
-    protected void setDefaults() { }
+    protected void setDefaults() {
+        this.testSize = 120;
+    }
 
     @Override
     protected boolean validateParms() throws IOException {
@@ -77,14 +79,6 @@ public class BuildProcessor extends BaseProcessor {
             throw new FileNotFoundException(this.rolesToUse + " is not found or unreadable.");
         if (! this.rawTable.canRead())
             throw new FileNotFoundException(this.rawTable + " is not found or unreadable.");
-        // Read in the testing set.
-        try (TabbedLineReader testStream = new TabbedLineReader(new File(this.modelDir, "test.set.tbl"))) {
-            this.testSet = new HashSet<String>();
-            for (TabbedLineReader.Line line : testStream) {
-                this.testSet.add(line.get(0));
-            }
-            log.info("{} genomes set aside for the testing set.", this.testSet.size());
-        }
         return true;
     }
 
@@ -97,7 +91,7 @@ public class BuildProcessor extends BaseProcessor {
         this.genomeMap = new HashMap<String, CountMap<String>>();
         // Now read the raw table.
         log.info("Reading {}.", this.rawTable);
-        try (TabbedLineReader rawStream = new TabbedLineReader(this.rawTable, 3)) {
+        try (TabbedLineReader rawStream = new TabbedLineReader(this.rawTable, 2)) {
             for (TabbedLineReader.Line line : rawStream) {
                 // Count this role as belonging to this genome.
                 String genome = Feature.genomeOf(line.get(2));
@@ -112,17 +106,13 @@ public class BuildProcessor extends BaseProcessor {
             // First we write the header.
             String roles = this.roleList.stream().collect(Collectors.joining("\t"));
             outStream.format("genome\t%s%n", roles);
-            log.info("Writing testing set.");
-            // Now we write the testing set genomes.
-            for (String genome : this.testSet) {
+            // Shuffle the genomes so we get a random testing set.
+            Shuffler<String> genomeList = new Shuffler<String>(this.genomeMap.keySet());
+            genomeList.shuffle(this.testSize);
+            log.info("Writing training/testing set.");
+            // Now we write the genomes.
+            for (String genome : genomeList)
                 outputGenome(outStream, genome);
-            }
-            // Finally the rest of the genomes.
-            log.info("Writing training set.");
-            for (String genome : this.genomeMap.keySet()) {
-                if (! this.testSet.contains(genome))
-                    outputGenome(outStream, genome);
-            }
         }
     }
 
