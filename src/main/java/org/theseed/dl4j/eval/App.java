@@ -2,10 +2,19 @@ package org.theseed.dl4j.eval;
 
 import java.util.Arrays;
 
-import org.theseed.utils.ICommand;
+import org.theseed.utils.BaseProcessor;
 
 /**
  * DL4J-based genome evaluation
+ *
+ * train	train models to predict role frequencies
+ * eval		evaluate a directory of GTO files
+ * p3eval	evaluate a list of PATRIC genomes
+ * gto		evaluate a single GTO
+ * compare	produce an ORF-by-ORF comparison of genomes with their reference genomes
+ * bins		evaluate binning results
+ * build	build a genome consistency evaluator from training data
+ * analyze	analyze significant contributions among input features
  *
  */
 public class App
@@ -15,9 +24,12 @@ public class App
         // Get the control parameter.
         String command = args[0];
         String[] newArgs = Arrays.copyOfRange(args, 1, args.length);
-        ICommand processor;
+        BaseProcessor processor;
         // Parse the parameters.
         switch (command) {
+        case "analyze" :
+            processor = new AnalyzeProcessor();
+            break;
         case "train" :
             processor = new TrainProcessor();
             break;

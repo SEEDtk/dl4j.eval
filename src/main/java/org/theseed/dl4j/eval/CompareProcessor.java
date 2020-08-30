@@ -20,8 +20,6 @@ import java.util.TreeMap;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,10 +31,7 @@ import org.theseed.genome.GenomeDirectory;
 import org.theseed.locations.Location;
 import org.theseed.reports.Html;
 import org.theseed.sequence.MD5Hex;
-import org.theseed.utils.ICommand;
-
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
+import org.theseed.utils.BaseProcessor;
 import j2html.tags.ContainerTag;
 import j2html.tags.DomContent;
 import static j2html.TagCreator.*;
@@ -56,7 +51,7 @@ import static j2html.TagCreator.*;
  * @author Bruce Parrello
  *
  */
-public class CompareProcessor implements ICommand {
+public class CompareProcessor extends BaseProcessor {
 
     // FIELDS
 
@@ -80,17 +75,9 @@ public class CompareProcessor implements ICommand {
 
     // COMMAND LINE OPTIONS
 
-    /** help option */
-    @Option(name = "-h", aliases = { "--help" }, help = true)
-    private boolean help;
-
     /** clear-output flag */
     @Option(name = "--clear", usage = "clear output directory before starting")
     private boolean clearOutDir;
-
-    /** debug-message flag */
-    @Option(name = "-v", aliases = { "--verbose", "--debug" }, usage = "show more detailed progress messages")
-    private boolean debug;
 
     /** input genome directory */
     @Argument(index = 0, metaVar = "inDir", usage = "input directory", required = true)
@@ -105,109 +92,80 @@ public class CompareProcessor implements ICommand {
     private File outDir;
 
     @Override
-    public boolean parseCommand(String[] args) {
-        boolean retVal = false;
-        // Set the defaults.
-        this.debug = false;
-        this.clearOutDir = false;
-        this.refDir = null;
-        // Parse the command line.
-        CmdLineParser parser = new CmdLineParser(this);
-        try {
-            parser.parseArgument(args);
-            if (this.help) {
-                parser.printUsage(System.err);
+    public boolean validateParms() throws IOException {
+        if (! this.inDir.isDirectory()) {
+            throw new FileNotFoundException("Input directory " + this.inDir + " is not found or invalid.");
+        } else if (! this.refDir.isDirectory()) {
+            throw new FileNotFoundException("Reference input directory " + this.refDir + " is not found or invalid.");
+        } else {
+            if (! this.outDir.exists()) {
+                log.info("Creating output directory {}.", this.outDir);
+                if (! this.outDir.mkdir())
+                    throw new IOException("Could not create output directory.");
+            } else if (! this.outDir.isDirectory()) {
+                throw new IOException("Output directory " + this.outDir + " is invalid.");
+            } else if (this.clearOutDir) {
+                log.info("Erasing output directory {}.", this.outDir);
+                FileUtils.cleanDirectory(this.outDir);
             } else {
-                if (! this.inDir.isDirectory()) {
-                    throw new FileNotFoundException("Input directory " + this.inDir + " is not found or invalid.");
-                } else if (! this.refDir.isDirectory()) {
-                    throw new FileNotFoundException("Reference input directory " + this.refDir + " is not found or invalid.");
-                } else {
-                    if (! this.outDir.exists()) {
-                        log.info("Creating output directory {}.", this.outDir);
-                        if (! this.outDir.mkdir())
-                            throw new IOException("Could not create output directory.");
-                        else
-                            retVal = true;
-                    } else if (! this.outDir.isDirectory()) {
-                        throw new IOException("Output directory " + this.outDir + " is invalid.");
-                    } else if (this.clearOutDir) {
-                        log.info("Erasing output directory {}.", this.outDir);
-                        FileUtils.cleanDirectory(this.outDir);
-                        retVal = true;
-                    } else {
-                        log.info("Output will be in {}.", this.outDir);
-                        retVal = true;
-                    }
-                }
+                log.info("Output will be in {}.", this.outDir);
             }
-        } catch (CmdLineException e) {
-            System.err.println(e.getMessage());
-            // For parameter errors, we display the command usage.
-            parser.printUsage(System.err);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
         }
-        return retVal;
+        return true;
     }
 
     @Override
-    public void run() {
-        try {
-            if (this.debug) {
-                // To get more progress messages, we set the log level in logback.
-                LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-                ch.qos.logback.classic.Logger logger = loggerContext.getLogger("org.theseed");
-                logger.setLevel(Level.toLevel("TRACE"));
-            }
-            // Create the comparator and the MD5 calculator.
-            this.comparator = new Compare();
-            this.md5Computer = new MD5Hex();
-            // Initialize the summary row table.  Note the header is given a low score to sort it to the top.
-            this.summaryData = new TreeMap<Double, Collection<DomContent>>();
-            this.summaryData.put(-1.0, Collections.singleton(tr(th("Match Score").withClass("num"), th("Genome 1 ID"), th("Genome 1 Name"), th("Genome 2 ID"), th("Genome 2 Name"))));
-            // Get all the reference genomes.  We would like to hold them in memory, but it is too much.
-            // Instead, we map the genome MD5 to its file name.
-            log.info("Analyzing reference genomes from {}.", this.refDir);
-            GenomeDirectory refGenomeDir = new GenomeDirectory(this.refDir);
-            this.refGenomes = new HashMap<String, File>();
-            for (Genome refGenome : refGenomeDir) {
-                // Get the MD5 for all the contig IDs.
-                String key = this.md5Computer.sequenceMD5(refGenome);
-                // Map the file name to the MD5.
-                this.refGenomes.put(key, refGenomeDir.currFile());
-            }
-            // Get all the genomes.
-            log.info("Reading genomes from {}.", this.inDir);
-            GenomeDirectory genomesIn = new GenomeDirectory(this.inDir);
-            for (Genome genome : genomesIn) {
-                log.info("Processing genome {}.", genome);
-                // Search for a match.
-                String key = this.md5Computer.sequenceMD5(genome);
-                File refGenomeFile = this.refGenomes.get(key);
-                if (refGenomeFile == null) {
-                    log.warn("No match found for {}", genome);
-                } else {
-                    // Read the reference genome.
-                    this.genome1 = genome;
-                    this.genome2 = new Genome(refGenomeFile);
-                    // Map the contigs.
-                    mapContigs();
-                    // Do a compare.
-                    this.compareReport();
-                }
-            }
-            log.info("Writing summary page.");
-            Collection<DomContent> summaryRows = new ArrayList<DomContent>(genomesIn.size());
-            for (Collection<DomContent> summaryEntry : summaryData.values())
-                summaryRows.addAll(summaryEntry);
-            String page = Html.page("Summary of ORF Comparisons", Html.formatTable("Genome Comparisons", summaryRows));
-            File outFile = new File(this.outDir, "index.html");
-            FileUtils.writeStringToFile(outFile, page, "UTF-8");
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+    public void setDefaults() {
+        this.clearOutDir = false;
+        this.refDir = null;
+    }
 
+    @Override
+    public void runCommand() throws Exception {
+        // Create the comparator and the MD5 calculator.
+        this.comparator = new Compare();
+        this.md5Computer = new MD5Hex();
+        // Initialize the summary row table.  Note the header is given a low score to sort it to the top.
+        this.summaryData = new TreeMap<Double, Collection<DomContent>>();
+        this.summaryData.put(-1.0, Collections.singleton(tr(th("Match Score").withClass("num"), th("Genome 1 ID"), th("Genome 1 Name"), th("Genome 2 ID"), th("Genome 2 Name"))));
+        // Get all the reference genomes.  We would like to hold them in memory, but it is too much.
+        // Instead, we map the genome MD5 to its file name.
+        log.info("Analyzing reference genomes from {}.", this.refDir);
+        GenomeDirectory refGenomeDir = new GenomeDirectory(this.refDir);
+        this.refGenomes = new HashMap<String, File>();
+        for (Genome refGenome : refGenomeDir) {
+            // Get the MD5 for all the contig IDs.
+            String key = this.md5Computer.sequenceMD5(refGenome);
+            // Map the file name to the MD5.
+            this.refGenomes.put(key, refGenomeDir.currFile());
+        }
+        // Get all the genomes.
+        log.info("Reading genomes from {}.", this.inDir);
+        GenomeDirectory genomesIn = new GenomeDirectory(this.inDir);
+        for (Genome genome : genomesIn) {
+            log.info("Processing genome {}.", genome);
+            // Search for a match.
+            String key = this.md5Computer.sequenceMD5(genome);
+            File refGenomeFile = this.refGenomes.get(key);
+            if (refGenomeFile == null) {
+                log.warn("No match found for {}", genome);
+            } else {
+                // Read the reference genome.
+                this.genome1 = genome;
+                this.genome2 = new Genome(refGenomeFile);
+                // Map the contigs.
+                mapContigs();
+                // Do a compare.
+                this.compareReport();
+            }
+        }
+        log.info("Writing summary page.");
+        Collection<DomContent> summaryRows = new ArrayList<DomContent>(genomesIn.size());
+        for (Collection<DomContent> summaryEntry : summaryData.values())
+            summaryRows.addAll(summaryEntry);
+        String page = Html.page("Summary of ORF Comparisons", Html.formatTable("Genome Comparisons", summaryRows));
+        File outFile = new File(this.outDir, "index.html");
+        FileUtils.writeStringToFile(outFile, page, "UTF-8");
     }
 
     /**

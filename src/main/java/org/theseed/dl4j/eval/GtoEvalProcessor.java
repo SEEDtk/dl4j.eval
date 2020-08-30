@@ -6,8 +6,6 @@ package org.theseed.dl4j.eval;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.theseed.genome.Genome;
 import org.theseed.utils.ICommand;
@@ -43,11 +41,6 @@ import org.theseed.utils.ICommand;
  */
 public class GtoEvalProcessor extends Evaluator implements ICommand {
 
-    // FIELDS
-
-    /** saved command-line arguments */
-    private String[] options;
-
     // COMMAND LINE
 
     /** input file name */
@@ -72,84 +65,63 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
 
 
     @Override
-    public boolean parseCommand(String[] args) {
-        boolean retVal = false;
-        // Set the defaults.
+    public void validateEvalParms() throws IOException {
+        // Insure we can read the genome file, if there is one.
+        if (this.inFile != null && ! this.inFile.canRead()) {
+            throw new FileNotFoundException("Input " + this.inFile + " does not exist or cannot be read.");
+        }
+        // Set up the output directory.
+        this.validateOutputDir(this.outputDir, this.clearOutputDir);
+        // Suppress the summary report.
+        this.suppressSummary();
+    }
+
+    /**
+     *
+     */
+    public void setDefaults() {
         this.inFile = null;
         this.outFile = null;
         this.outputDir = new File(System.getProperty("user.dir"));
         this.refGenomeFile = null;
-        // Save the arguments.
-        this.options = args;
-        // Parse the command line.
-        CmdLineParser parser = new CmdLineParser(this);
-        try {
-            parser.parseArgument(args);
-            if (this.isHelp()) {
-                parser.printUsage(System.err);
-            } else if (this.validateParms()) {
-                // Insure we can read the genome file, if there is one.
-                if (this.inFile != null && ! this.inFile.canRead()) {
-                    throw new FileNotFoundException("Input " + this.inFile + " does not exist or cannot be read.");
-                }
-                // Set up the output directory.
-                this.validateOutputDir(this.outputDir, this.clearOutputDir);
-                // Suppress the summary report.
-                this.suppressSummary();
-                // Denote we're ready to run.
-                retVal = true;
-            }
-        } catch (CmdLineException e) {
-            System.err.println(e.getMessage());
-            // For parameter errors, we display the command usage.
-            parser.printUsage(System.err);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
-        }
-        return retVal;
     }
 
     @Override
-    public void run() {
-        try {
-            // Set up the reference-genome engine (if necessary).
-            this.setupRefGenomeEngine(this.refGenomeFile);
-            // Read in the role maps.
-            initializeData();
-            // Read in the genome.
-            log.info("Loading input genome.");
-            Genome genome;
-            if (this.inFile != null) {
-                genome = new Genome(this.inFile);
-            } else {
-                genome = new Genome(System.in);
-            }
-            log.info("Analyzing genome {}.", genome.getId());
-            // Allocate the arrays.
-            this.allocateArrays(1);
-            // Store the genome in the arrays.
-            processGenome(0, genome);
-            // Evaluate the consistency of the genomes.
-            evaluateConsistency();
-            // Write the results.
-            writeOutput();
-            // Now we need to write the GTO.  Get the version string.
-            String version = this.getVersion();
-            // Retrieve the evaluation report.
-            GenomeStats gReport = this.getReport(0);
-            log.info("Writing evaluated genome.");
-            gReport.store(genome, this.getRoleDefinitions(), version, options);
-            if (this.outFile != null) {
-                genome.update(this.outFile);
-            } else {
-                genome.update(System.out);
-            }
-            // Finish processing.
-            this.close();
-        } catch (Exception e) {
-            e.printStackTrace();
+    public void runCommand() throws Exception {
+        // Set up the reference-genome engine (if necessary).
+        this.setupRefGenomeEngine(this.refGenomeFile);
+        // Read in the role maps.
+        initializeData();
+        // Read in the genome.
+        log.info("Loading input genome.");
+        Genome genome;
+        if (this.inFile != null) {
+            genome = new Genome(this.inFile);
+        } else {
+            genome = new Genome(System.in);
         }
-
+        log.info("Analyzing genome {}.", genome.getId());
+        // Allocate the arrays.
+        this.allocateArrays(1);
+        // Store the genome in the arrays.
+        processGenome(0, genome);
+        // Evaluate the consistency of the genomes.
+        evaluateConsistency();
+        // Write the results.
+        writeOutput();
+        // Now we need to write the GTO.  Get the version string.
+        String version = this.getVersion();
+        // Retrieve the evaluation report.
+        GenomeStats gReport = this.getReport(0);
+        log.info("Writing evaluated genome.");
+        gReport.store(genome, this.getRoleDefinitions(), version, this.getOptions());
+        if (this.outFile != null) {
+            genome.update(this.outFile);
+        } else {
+            genome.update(System.out);
+        }
+        // Finish processing.
+        this.close();
     }
 
 }

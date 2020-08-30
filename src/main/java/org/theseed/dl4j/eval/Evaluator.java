@@ -29,6 +29,7 @@ import org.theseed.io.TabbedLineReader;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
+import org.theseed.utils.BaseProcessor;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
@@ -52,7 +53,7 @@ import ch.qos.logback.classic.LoggerContext;
  * @author Bruce Parrello
  *
  */
-public class Evaluator {
+public abstract class Evaluator extends BaseProcessor {
 
     // FIELDS
 
@@ -141,7 +142,8 @@ public class Evaluator {
      *
      * @throws IOException
      */
-    protected boolean validateParms() throws IOException {
+    @Override
+    protected final boolean validateParms() throws IOException {
         boolean retVal = false;
         if (! this.modelDir.isDirectory()) {
             throw new FileNotFoundException("Model directory " + this.modelDir + " not found or invalid.");
@@ -165,6 +167,9 @@ public class Evaluator {
                 EvalDeepReporter deepReporter = ((EvalDeepReporter) this.getReporter());
                 deepReporter.setSensitivity(this.sensitivity);
             }
+            // Validate the subclass parms.
+            this.validateEvalParms();
+            // Denote we can run.
             retVal = true;
         }
         return retVal;
@@ -490,6 +495,11 @@ public class Evaluator {
     protected RoleMap getRoleDefinitions() {
         return roleDefinitions;
     }
+
+    /**
+     * Validate the subclass parameters.
+     */
+    public abstract void validateEvalParms() throws IOException;
 
 
 }

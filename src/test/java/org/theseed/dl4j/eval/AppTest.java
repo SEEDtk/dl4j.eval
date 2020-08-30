@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
+import org.theseed.dl4j.eval.reports.RoleInfluence;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.sequence.ProteinKmers;
@@ -278,6 +279,29 @@ public class AppTest extends TestCase
         uniRoles = UniversalRoles.findGroup(s1262687_3, compList);
         assertThat(uniRoles.getName(), equalTo("R50 (Phascolarctobacterium sp. CAG:266)"));
 
+    }
+
+    /**
+     * test role influence object
+     */
+    public void testRoleInfluence() {
+        RoleInfluence r1 = new RoleInfluence("roleA", "this is role A");
+        RoleInfluence r2 = new RoleInfluence("roleB", "this is role B");
+        assertThat(r1.getId(), equalTo("roleA"));
+        assertThat(r1.getName(), equalTo("this is role A"));
+        assertThat(r1.getRating(), equalTo(0.0));
+        assertThat(r2.getId(), equalTo("roleB"));
+        assertThat(r2.getName(), equalTo("this is role B"));
+        assertThat(r2.getRating(), equalTo(0.0));
+        assertThat(r1.compareTo(r2), lessThan(0));
+        r1.increment(2.0);
+        r2.increment(3.0);
+        assertThat(r1.getRating(), equalTo(2.0));
+        assertThat(r2.getRating(), equalTo(3.0));
+        assertThat(r1.compareTo(r2), greaterThan(0));
+        r1.increment(4.0);
+        assertThat(r1.getRating(), equalTo(6.0));
+        assertThat(r1.compareTo(r2), lessThan(0));
     }
 
 }

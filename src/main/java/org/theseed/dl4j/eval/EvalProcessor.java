@@ -6,13 +6,13 @@ package org.theseed.dl4j.eval;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
+
 import org.kohsuke.args4j.Argument;
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeDirectory;
-import org.theseed.utils.ICommand;
 
 
 /**
@@ -30,24 +30,22 @@ import org.theseed.utils.ICommand;
  *
  * The command-line options are as follows.
  *
+ * -h	display command-line usage
  * -v	show more detailed progress messages
  * -O	the name of the output directory (defaults to the current directory)
  * -s	maximum distance for a close protein in deep reporting (0 to 1)
+ * -b   maximum number of genomes to process at one time
  *
  * --terse		do not write the individual output files, only the summary
  * --update		store the quality information in the GTO and write it to the output directory
  * --format		specify the output format-- HTML, DEEP, or TEXT
- * --ref		ID of a reference genome to use for all the evaluation reports
+ * --ref		name of a reference genome file to use for the deep-format reports
  * --clear		clear the output directory before processing
  *
  * @author Bruce Parrello
  *
  */
-public class EvalProcessor extends Evaluator implements ICommand {
-
-    // FIELDS
-    /** saved command-line parameters */
-    private String[] options;
+public class EvalProcessor extends Evaluator  {
 
     // COMMAND LINE
 
@@ -71,87 +69,86 @@ public class EvalProcessor extends Evaluator implements ICommand {
     @Option(name = "--clear", usage = "clear output directory before starting")
     private boolean clearOutputDir;
 
-    /**
-     * Parse command-line options to specify the parameters of this object.
-     *
-     * @param args	an array of the command-line parameters and options
-     *
-     * @return TRUE if successful, FALSE if the parameters are invalid
-     */
-    public boolean parseCommand(String[] args) {
-        boolean retVal = false;
-        // Set the defaults.
-        this.update = false;
-        this.refGenomeFile = null;
-        this.outputDir = new File(System.getProperty("user.dir"));
-        // Save the parameters.
-        this.options = args;
-        // Parse the command line.
-        CmdLineParser parser = new CmdLineParser(this);
-        try {
-            parser.parseArgument(args);
-            if (this.isHelp()) {
-                parser.printUsage(System.err);
-            } else if (this.validateParms()) {
-                // Check the input directory.
-                if (! this.inDir.isDirectory()) {
-                    throw new FileNotFoundException("Input " + this.inDir + " is neither a directory or a readable file.");
-                }
-                // Set up the output directory.
-                this.validateOutputDir(this.outputDir, this.clearOutputDir);
-               // Denote we're ready to run.
-                retVal = true;
-            }
-        } catch (CmdLineException e) {
-            System.err.println(e.getMessage());
-            // For parameter errors, we display the command usage.
-            parser.printUsage(System.err);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
+    /** number of genomes to process in each chunk */
+    @Option(name = "-b", aliases = { "--batch", "--batchSize" }, metaVar = "100", usage = "number of genomes to process in each batch")
+    private int batchSize;
+
+    @Override
+    public void validateEvalParms() throws IOException {
+        // Check the input directory.
+        if (! this.inDir.isDirectory()) {
+            throw new FileNotFoundException("Input " + this.inDir + " is neither a directory or a readable file.");
         }
-        return retVal;
+        // Set up the output directory.
+        this.validateOutputDir(this.outputDir, this.clearOutputDir);
     }
 
     @Override
-    public void run() {
-        try {
-            // Set up the reference-genome engine (if necessary).
-            this.setupRefGenomeEngine(this.refGenomeFile);
-            // Read in the role maps.
-            initializeData();
-            log.info("Genomes will be read from {}.", this.inDir);
-            GenomeDirectory genomeDir = new GenomeDirectory(this.inDir);
-            // We know the number of genomes, so we can allocate our arrays.
-            this.allocateArrays(genomeDir.size());
-            // Loop through the genomes.  Note we track the genome's index in genomeStats;
-            int iGenome = 0;
-            for (Genome genome : genomeDir) {
-                processGenome(iGenome, genome);
-                // Prepare for the next genome.
-                iGenome++;
+    public void setDefaults() {
+        this.update = false;
+        this.refGenomeFile = null;
+        this.outputDir = new File(System.getProperty("user.dir"));
+        this.batchSize = 200;
+    }
+
+    @Override
+    public void runCommand() throws Exception {
+        // Set up the reference-genome engine (if necessary).
+        this.setupRefGenomeEngine(this.refGenomeFile);
+        // Read in the role maps.
+        initializeData();
+        log.info("Genomes will be read from {}.", this.inDir);
+        GenomeDirectory genomeDir = new GenomeDirectory(this.inDir);
+        // Allocate our arrays.
+        this.allocateArrays(this.batchSize);
+        // Loop through the genomes.  Note we track the genome's index in genomeStats;
+        int iGenome = 0;
+        for (Genome genome : genomeDir) {
+            // Insure there is room for this genome.
+            if (iGenome >= this.batchSize) {
+                processBatch();
+                iGenome = 0;
             }
-            // Evaluate the consistency of the genomes.
-            evaluateConsistency();
-            // Write the results.
-            writeOutput();
-            // If we are updating GTOs, do it here.
-            if (this.update) {
-                // We need the version string.
-                String version = this.getVersion();
-                for (int g = 0; g < this.getGenomeCount(); g++) {
-                    GenomeStats gReport = this.getReport(g);
-                    Genome gObject = gReport.getGenome();
-                    String gId = gObject.getId();
-                    log.debug("Updating GTO for {}.", gId);
-                    gReport.store(gObject, this.getRoleDefinitions(), version, options);
-                    File outFile = new File(this.getOutDir(), gId + ".gto");
-                    gObject.update(outFile);
-                }
+            // Store the genome.
+            processGenome(iGenome, genome);
+            // Prepare for the next one.
+            iGenome++;
+        }
+        // Process the residual batch.
+        this.setnGenomes(iGenome);
+        processBatch();
+        // Finish processing.
+        this.close();
+    }
+
+    /**
+     * Process the current batch of genomes.
+     *
+     * @throws IOException
+     * @throws FileNotFoundException
+     * @throws NoSuchAlgorithmException
+     * @throws UnsupportedEncodingException
+     */
+    public void processBatch()
+            throws IOException, FileNotFoundException, NoSuchAlgorithmException, UnsupportedEncodingException {
+        log.info("Processing genome batch with {} genomes.", this.getGenomeCount());
+        // Evaluate the consistency of the genomes.
+        evaluateConsistency();
+        // Write the results.
+        writeOutput();
+        // If we are updating GTOs, do it here.
+        if (this.update) {
+            // We need the version string.
+            String version = this.getVersion();
+            for (int g = 0; g < this.getGenomeCount(); g++) {
+                GenomeStats gReport = this.getReport(g);
+                Genome gObject = gReport.getGenome();
+                String gId = gObject.getId();
+                log.debug("Updating GTO for {}.", gId);
+                gReport.store(gObject, this.getRoleDefinitions(), version, this.getOptions());
+                File outFile = new File(this.getOutDir(), gId + ".gto");
+                gObject.update(outFile);
             }
-            // Finish processing.
-            this.close();
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 

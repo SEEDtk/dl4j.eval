@@ -6,13 +6,10 @@ package org.theseed.dl4j.eval;
 import java.io.File;
 import java.io.IOException;
 
-import org.kohsuke.args4j.CmdLineException;
-import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.p3api.Connection;
 import org.theseed.p3api.P3Genome;
-import org.theseed.utils.ICommand;
 
 /**
  * This processor performs the evaluations on PATRIC genomes.  It will take as input an evaluation directory and a tab-delimited
@@ -44,7 +41,7 @@ import org.theseed.utils.ICommand;
  * @author Bruce Parrello
  *
  */
-public class P3EvalProcessor extends Evaluator implements ICommand {
+public class P3EvalProcessor extends Evaluator {
 
     // FIELDS
     /** stream for reading the input */
@@ -81,88 +78,68 @@ public class P3EvalProcessor extends Evaluator implements ICommand {
     private int batchSize;
 
     @Override
-    public boolean parseCommand(String[] args) {
-        boolean retVal = false;
-        // Set the defaults.
+    public void validateEvalParms() throws IOException {
+        // Open the input file.
+        if (this.inFile != null) {
+            log.info("Genome IDs will be read from {}.", this.inFile);
+            this.inStream = new TabbedLineReader(this.inFile);
+        } else {
+            log.info("Genome IDs will be read from standard input.");
+            this.inStream = new TabbedLineReader(System.in);
+        }
+        // Validate the output directory.
+        this.validateOutputDir(this.outputDir, this.clearOutputDir);
+        // Compute the input column index.
+        this.colIdx = this.inStream.findField(this.colId);
+            // Denote we're ready to run.
+    }
+
+    @Override
+    public void setDefaults() {
         this.colId = "1";
         this.inFile = null;
         this.batchSize = 200;
         this.outputDir = new File(System.getProperty("user.dir"));
         this.refGenomeFile = null;
-        // Parse the command line.
-        CmdLineParser parser = new CmdLineParser(this);
-        try {
-            parser.parseArgument(args);
-            if (this.isHelp()) {
-                parser.printUsage(System.err);
-            } else if (this.validateParms()) {
-                // Open the input file.
-                if (this.inFile != null) {
-                    log.info("Genome IDs will be read from {}.", this.inFile);
-                    this.inStream = new TabbedLineReader(this.inFile);
-                } else {
-                    log.info("Genome IDs will be read from standard input.");
-                    this.inStream = new TabbedLineReader(System.in);
-                }
-                // Validate the output directory.
-                this.validateOutputDir(this.outputDir, this.clearOutputDir);
-                // Compute the input column index.
-                this.colIdx = this.inStream.findField(this.colId);
-               // Denote we're ready to run.
-                retVal = true;
-            }
-        } catch (CmdLineException e) {
-            System.err.println(e.getMessage());
-            // For parameter errors, we display the command usage.
-            parser.printUsage(System.err);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
-        }
-        return retVal;
     }
 
     @Override
-    public void run() {
-        try {
-            // Set up the reference-genome engine (if necessary).
-            this.setupRefGenomeEngine(this.refGenomeFile);
-            // Connect to PATRIC.
-            this.p3 = new Connection();
-            // Set up the output directory.
-            this.setOutDir(this.outputDir);
-            // Read in the role maps.
-            this.initializeData();
-            // Create the arrays.
-            this.allocateArrays(this.batchSize);
-            // Now we loop through the input genomes, processing them in batches.  The genomes are read into memory
-            // one at a time, because of all the ancillary data needed.
-            int iGenome = 0;
-            for (TabbedLineReader.Line line : this.inStream) {
-                if (iGenome >= this.batchSize) {
-                    // No room for the next genome, so process this batch.
-                    this.processBatch();
-                    iGenome = 0;
-                }
-                // Add this genome to the data structures.  If it's not found, that's a warning.
-                String genomeId = line.get(this.colIdx);
-                P3Genome genome = P3Genome.Load(p3, genomeId, this.getDetailLevel());
-                if (genome == null) {
-                    log.debug("Could not find genome {} -- skipped.", genomeId);
-                } else {
-                    this.processGenome(iGenome, genome);
-                    iGenome++;
-                }
-            }
-            if (iGenome > 0) {
-                this.setnGenomes(iGenome);
+    public void runCommand() throws Exception {
+        // Set up the reference-genome engine (if necessary).
+        this.setupRefGenomeEngine(this.refGenomeFile);
+        // Connect to PATRIC.
+        this.p3 = new Connection();
+        // Set up the output directory.
+        this.setOutDir(this.outputDir);
+        // Read in the role maps.
+        this.initializeData();
+        // Create the arrays.
+        this.allocateArrays(this.batchSize);
+        // Now we loop through the input genomes, processing them in batches.  The genomes are read into memory
+        // one at a time, because of all the ancillary data needed.
+        int iGenome = 0;
+        for (TabbedLineReader.Line line : this.inStream) {
+            if (iGenome >= this.batchSize) {
+                // No room for the next genome, so process this batch.
                 this.processBatch();
+                iGenome = 0;
             }
-            // Clean up processing.
-            this.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+            // Add this genome to the data structures.  If it's not found, that's a warning.
+            String genomeId = line.get(this.colIdx);
+            P3Genome genome = P3Genome.Load(p3, genomeId, this.getDetailLevel());
+            if (genome == null) {
+                log.debug("Could not find genome {} -- skipped.", genomeId);
+            } else {
+                this.processGenome(iGenome, genome);
+                iGenome++;
+            }
         }
-
+        if (iGenome > 0) {
+            this.setnGenomes(iGenome);
+            this.processBatch();
+        }
+        // Clean up processing.
+        this.close();
     }
 
     /**
