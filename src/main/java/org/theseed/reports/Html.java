@@ -22,7 +22,7 @@ public class Html {
     /** background color for values indicating bad genomes */
     public static final String BAD_STYLE = "background-color: gold;";
 
-    public static final String CSS_HREF = "https://patricbrc.org/js/3.6.2/p3/resources/p3.css";
+    public static final String CSS_HREF = "https://patricbrc.org/js/3.6.6/p3/resources/p3.css";
 
     private static final String NUM_FORMAT = "%-8.2f";
 

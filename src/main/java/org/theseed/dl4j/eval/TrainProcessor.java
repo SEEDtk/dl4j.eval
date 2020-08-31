@@ -15,15 +15,12 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.text.TextStringBuilder;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
 import org.theseed.dl4j.train.ClassTrainingProcessor;
-import org.theseed.dl4j.train.RunStats;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.Parms;
@@ -63,8 +60,6 @@ public class TrainProcessor extends BaseProcessor {
     private File trainingFile;
     /** array of training file labels */
     private String[] labels;
-    /** array of accuracy scores */
-    double[] ratings;
     /** label file */
     private File labelFile;
     /** role file subdirectory */
@@ -104,7 +99,7 @@ public class TrainProcessor extends BaseProcessor {
     @Override
     public void setDefaults() {
         this.help = false;
-        this.minAcc = 0.925;
+        this.minAcc = 0.93;
         this.maxLayers = 4;
         this.resumeFile = null;
     }
@@ -134,6 +129,7 @@ public class TrainProcessor extends BaseProcessor {
                 if (! ok)
                     throw new IOException("Error creating Roles directory.");
             } else if (this.resumeFile == null) {
+                // Clean out any previous results.  We are starting fresh.
                 log.info("Erasing roles directory {}.", this.rolesDir);
                 FileUtils.cleanDirectory(this.rolesDir);
             }
@@ -144,6 +140,10 @@ public class TrainProcessor extends BaseProcessor {
                 this.output = System.out;
                 // Denote no roles were pre-processed.
                 this.processedRoles = Collections.emptySet();
+                // Clear the trial log.
+                File trials = new File(this.modelDir, "trials.log");
+                if (trials.exists())
+                    FileUtils.forceDelete(trials);
             } else {
                 // Resume processing.  Save the roles we've already seen.
                 this.processedRoles = TabbedLineReader.readSet(this.resumeFile, "role_id");
@@ -177,8 +177,6 @@ public class TrainProcessor extends BaseProcessor {
             }
         }
         log.info("{} roles found for processing.", this.roleMap.size());
-        // Allocate the accuracy array.
-        this.ratings = new double[this.labels.length];
         // Create the training processor.
         ClassTrainingProcessor processor = new ClassTrainingProcessor();
         // Suppress saving the model.  We will do that later if we like it.
@@ -204,9 +202,9 @@ public class TrainProcessor extends BaseProcessor {
                     }
                 }
                 // Now we loop through layer sizes, trying to get a working model.
-                ratings[i] = 0.0;
+                double rating = 0.0;
                 int layersUsed = 0;
-                for (int layers = 0; ratings[i] < this.minAcc && layers <= this.maxLayers; layers++) {
+                for (int layers = 0; rating < this.minAcc && layers <= this.maxLayers; layers++) {
                     // Create the final argument buffer.
                     String[] argBuffer = new String[theseParms.size() + 5];
                     int nextIdx = 0;
@@ -226,44 +224,18 @@ public class TrainProcessor extends BaseProcessor {
                     boolean ok = processor.parseCommand(argBuffer);
                     if (ok) {
                         processor.run();
-                        ratings[i] = processor.getRating();
+                        rating = processor.getRating();
                         layersUsed = layers;
                     } else {
                         throw new RuntimeException("Error processing role.");
                     }
                 }
-                if (ratings[i] >= this.minAcc) {
+                if (rating >= this.minAcc) {
                     // Here we can keep this model.
                     processor.saveModelForced(new File(this.rolesDir, role + ".ser"));
                 }
-                this.output.format("%d\t%s\t%8.5f\t%d%n", i, role, ratings[i], layersUsed);
+                this.output.format("%d\t%s\t%8.5f\t%d%n", i, role, rating, layersUsed);
             }
-        }
-        // Now log all the scores.
-        String boundary = StringUtils.repeat('=', 34);
-        // We will build the report in here.
-        TextStringBuilder buffer = new TextStringBuilder(33 * (this.labels.length + 4));
-        buffer.appendNewLine();
-        buffer.appendln(boundary);
-        // Write out the heading line.
-        buffer.appendln(String.format("%-21s %11s", "Role", "Score"));
-        // Write out a space.
-        buffer.appendln("");
-        // Write out the data lines.
-        for (int i = 1; i < this.labels.length; i++) {
-            char flag = (this.ratings[i] < this.minAcc ? '*' : ' ');
-            buffer.appendln(String.format("%-21s %11.4f%c", this.labels[i], this.ratings[i], flag));
-        }
-        // Write out a trailer line.
-        buffer.appendln(boundary);
-        // Write it to the output log.
-        String report = buffer.toString();
-        log.info(report);
-        // Write it to the trial file.
-        try {
-            RunStats.writeTrialReport(processor.getTrialFile(), "Summary of Model Ratings", report);
-        } catch (IOException e) {
-            System.err.println("Error writing trial log:" + e.getMessage());
         }
     }
 }

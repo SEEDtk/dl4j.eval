@@ -31,9 +31,6 @@ import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.utils.BaseProcessor;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
-
 /**
  *
  * This is a subclass that evaluates genomes.  The various subclasses get the actual genome data into memory so it can be processed here.
@@ -90,17 +87,9 @@ public abstract class Evaluator extends BaseProcessor {
 
     // COMMAND LINE OPTIONS
 
-    /** help option */
-    @Option(name = "-h", aliases = { "--help" }, help = true)
-    private boolean help;
-
     /** summary-only flag */
     @Option(name = "--terse", usage = "do not output detail files")
     private boolean terse;
-
-    /** debug-message flag */
-    @Option(name = "-v", aliases = { "--verbose", "--debug" }, usage = "show more detailed progress messages")
-    private boolean debug;
 
     /** reporting format */
     @Option(name = "--format", usage = "format for output reports")
@@ -119,9 +108,7 @@ public abstract class Evaluator extends BaseProcessor {
      */
     public Evaluator() {
         // Initialize the flags and the output directory value.
-        this.help = false;
         this.terse = false;
-        this.debug = false;
         this.reportsOpened = false;
         this.outDir = new File(System.getProperty("user.dir"));
         this.format = EvalReporter.Type.TEXT;
@@ -244,12 +231,6 @@ public abstract class Evaluator extends BaseProcessor {
      * @throws IOException
      */
     protected void initializeData() throws IOException {
-        if (this.debug) {
-            // To get more progress messages, we set the log level in logback.
-            LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-            ch.qos.logback.classic.Logger logger = loggerContext.getLogger("org.theseed");
-            logger.setLevel(Level.toLevel("TRACE"));
-        }
         // Start the clock.
         this.start = System.currentTimeMillis();
         this.gCount = 0;
