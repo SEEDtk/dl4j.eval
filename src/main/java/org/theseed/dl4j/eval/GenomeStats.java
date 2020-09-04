@@ -275,7 +275,12 @@ public class GenomeStats {
      * @return the completeness group
      */
     public String getGroup() {
-        return group;
+        String retVal;
+        if (group == null)
+            retVal = "(no data)";
+        else
+            retVal = group;
+        return retVal;
     }
 
     /**
@@ -439,7 +444,7 @@ public class GenomeStats {
      * @return the percent complete
      */
     public double getCompletePercent() {
-        double retVal = 0;
+        double retVal = 100;
         if (completeCount > 0)
             retVal = (completeCount - missingCount) * 100.0 / completeCount;
         return retVal;
@@ -449,7 +454,7 @@ public class GenomeStats {
      * @return the percent contamination
      */
     public double getContaminationPercent() {
-        double retVal = 100;
+        double retVal = 0;
         if (completeCount > 0)
             retVal = contaminationCount * 100.0 / (contaminationCount + completeCount);
         return retVal;

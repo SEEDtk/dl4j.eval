@@ -94,21 +94,21 @@ public class EvalHtmlReporter extends EvalReporter {
         this.goodRows = new TreeMap<EvalSorter, DomContent>();
         this.badRows = new TreeMap<EvalSorter, DomContent>();
         // Put a header on each.
-        DomContent headerRow = tr(
+        ContainerTag headerRow = tr(
                 th("Score").withClass("num"),
                 th("Genome ID"),
                 th("Genome Name"),
                 th("Coarse %").withClass("num"),
-                th("Fine %").withClass("num"),
-                th("Complete %").withClass("num"),
-                th("Contamination %").withClass("num"),
-                th("Completeness Group"),
-                th("Contigs").withClass("num"),
-                th("Base Pairs").withClass("num"),
-                th("Hypothetical %").withClass("num"),
-                th("Good Phes").withClass("flag"),
-                th("Quality").withClass("flag")
-            );
+                th("Fine %").withClass("num"));
+        if (this.hasCompleteness())
+            headerRow.with(th("Complete %").withClass("num"))
+                    .with(th("Contamination %").withClass("num"))
+                    .with(th("Completeness Group"));
+        headerRow.with(th("Contigs").withClass("num"))
+                .with(th("Base Pairs").withClass("num"))
+                .with(th("Hypothetical %").withClass("num"))
+                .with(th("Good Phes").withClass("flag"))
+                .with(th("Quality").withClass("flag"));
         this.goodRows.put(EvalSorter.HEADER, headerRow);
         this.badRows.put(EvalSorter.HEADER, headerRow);
     }
@@ -158,7 +158,7 @@ public class EvalHtmlReporter extends EvalReporter {
         // Ask the subclass for any additional rows.
         advancedDetailRows(detailRows);
         // Fill in all the quality-data statistic rows.
-        qualityRows(gReport, detailRows);
+        qualityRows(gReport, detailRows, this.hasCompleteness());
         Html.detailRow(detailRows, "Overpresent Roles", Html.numCell(overCount));
         Html.detailRow(detailRows, "Underpresent Roles", Html.numCell(underCount));
         // Add the coverage if this came from a bin.
@@ -186,8 +186,9 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @param gReport		evaluated genome
      * @param qualityRows	table being built
+     * @param completeness	TRUE if completeness data is valid, else FALSE
      */
-    public static void qualityRows(GenomeStats gReport, List<DomContent> qualityRows) {
+    public static void qualityRows(GenomeStats gReport, List<DomContent> qualityRows, boolean completeness) {
         Html.detailRow(qualityRows, "Completeness Group", td(gReport.getGroup()));
         Html.detailRow(qualityRows, "Domain", td(gReport.getDomain()));
         Html.detailRow(qualityRows, "DNA size (base pairs)", Html.numCell(gReport.getDnaSize()));
@@ -195,16 +196,20 @@ public class EvalHtmlReporter extends EvalReporter {
         Html.detailRow(qualityRows, "Contig L50", Html.numCell(gReport.getL50()));
         Html.detailRow(qualityRows, "Contig N50", Html.numCell(gReport.getN50()));
         Html.detailRow(qualityRows, "Consistency Roles", Html.numCell(gReport.getConsistencyRoleCount()));
-        Html.detailRow(qualityRows, "Completeness Roles", Html.numCell(gReport.getCompletenessRoleCount()));
-        Html.detailRow(qualityRows, "Shared Completeness / Consistency Roles", Html.numCell(gReport.getCommonRoleCount()));
+        if (completeness) {
+            Html.detailRow(qualityRows, "Completeness Roles", Html.numCell(gReport.getCompletenessRoleCount()));
+            Html.detailRow(qualityRows, "Shared Completeness / Consistency Roles", Html.numCell(gReport.getCommonRoleCount()));
+        }
         Html.detailRow(qualityRows, "CDS Features", Html.numCell(gReport.getPegCount()));
         Html.detailRow(qualityRows, "CDS Features in Local Protein Families", Html.numCell(gReport.getPlfamCount()));
         Html.detailRow(qualityRows, "CDS Features without annotation", Html.numCell(gReport.getHypoCount()));
         Html.detailRow(qualityRows, "CDS Features with annotation", Html.numCell(gReport.getPegCount() - gReport.getHypoCount()));
         Html.detailRow(qualityRows, "Coarse Consistency %", Html.numCell(gReport.getCoarsePercent()));
         Html.detailRow(qualityRows, "Fine Consistency %", Html.colorCell(gReport.isConsistent(), gReport.getFinePercent()));
-        Html.detailRow(qualityRows, "Completeness %", Html.colorCell(gReport.isComplete(), gReport.getCompletePercent()));
-        Html.detailRow(qualityRows, "Contamination %", Html.colorCell(gReport.isClean(), gReport.getContaminationPercent()));
+        if (completeness) {
+            Html.detailRow(qualityRows, "Completeness %", Html.colorCell(gReport.isComplete(), gReport.getCompletePercent()));
+            Html.detailRow(qualityRows, "Contamination %", Html.colorCell(gReport.isClean(), gReport.getContaminationPercent()));
+        }
         Html.detailRow(qualityRows, "CDS Coverage %", Html.numCell(gReport.getCdsPercent()));
         Html.detailRow(qualityRows, "Hypothetical Protein %", Html.colorCell(gReport.isUnderstood(), gReport.getHypotheticalPercent()));
         Html.detailRow(qualityRows, "% CDS Features in Local Protein Families", Html.numCell(gReport.getPlfamPercent()));
@@ -371,21 +376,22 @@ public class EvalHtmlReporter extends EvalReporter {
 
     @Override
     protected void writeSummary(GenomeStats gReport) throws IOException {
-        DomContent detailRow = tr(
+        ContainerTag detailRow = tr(
                 td(Html.gPageLink(gReport.getId(), Html.num(gReport.getScore()))).withClass("num"),
                 td(gReport.getGenome().genomeLink()),
                 td(gReport.getName()),
                 Html.numCell(gReport.getCoarsePercent()),
-                Html.colorCell(gReport.isConsistent(), gReport.getFinePercent()),
-                Html.colorCell(gReport.isComplete(), gReport.getCompletePercent()),
-                Html.colorCell(gReport.isClean(), gReport.getContaminationPercent()),
-                td(gReport.getGroup()),
-                Html.numCell(gReport.getContigCount()),
-                Html.numCell(gReport.getDnaSize()),
-                Html.colorCell(gReport.isUnderstood(), gReport.getHypotheticalPercent()),
-                Html.flagCell(gReport.isGoodSeed(), "Y", ""),
-                Html.flagCell(gReport.isGood(), "Good", "Poor")
-            );
+                Html.colorCell(gReport.isConsistent(), gReport.getFinePercent()));
+        if (this.hasCompleteness()) {
+            detailRow.with(Html.colorCell(gReport.isComplete(), gReport.getCompletePercent()))
+                .with(Html.colorCell(gReport.isClean(), gReport.getContaminationPercent()))
+                .with(td(gReport.getGroup()));
+        }
+        detailRow.with(Html.numCell(gReport.getContigCount()))
+            .with(Html.numCell(gReport.getDnaSize()))
+            .with(Html.colorCell(gReport.isUnderstood(), gReport.getHypotheticalPercent()))
+            .with(Html.flagCell(gReport.isGoodSeed(), "Y", ""))
+            .with(Html.flagCell(gReport.isGood(), "Good", "Poor"));
         if (gReport.isGood())
             this.goodRows.put(new EvalSorter(gReport), detailRow);
         else
@@ -430,8 +436,10 @@ public class EvalHtmlReporter extends EvalReporter {
     private DomContent formatCounts() {
         ArrayList<DomContent> notes = new ArrayList<DomContent>();
         formatCount(notes, this.getConsistentCount(), "inconsistent");
-        formatCount(notes, this.getCompleteCount(), "incomplete");
-        formatCount(notes, this.getCleanCount(), "contaminated");
+        if (this.hasCompleteness()) {
+            formatCount(notes, this.getCompleteCount(), "incomplete");
+            formatCount(notes, this.getCleanCount(), "contaminated");
+        }
         formatCount(notes, this.getUnderstoodCount(), "insufficiently-characterized");
         int bad = this.getGenomeCount() - this.getGoodSeedCount();
         if (bad > 0) {

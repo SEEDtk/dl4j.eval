@@ -40,17 +40,19 @@ import org.theseed.utils.BaseProcessor;
  * 							and role names in the third
  *  roles.to.use			a list of the roles to use in consistency checking, in the order they appear in the consistency
  *  						models
- *  XXXXXX.ser				the occurrence-prediction model for the role with ID "XXXXXX"
+ *  XXXXXX.ser				the occurrence-prediction model for the role with ID "XXXXXX" (in subdirectory "Roles")
  *  comp.tbl				a completeness definition file (as produced by the kmer.reps RoleProcessor class); each completeness
  *  						group consists of a tab-delimited header line containing (0) the genome ID, (1) the minimum similarity score,
  *  						(2) the group name, and (3) the seed protein sequence, followed by one or more data lines beginning
  *  						with three spaces and containing the ID of a universal role for the group, followed by a trailer
  *  						line containing "//"; the final group is "root" and matches everything.
  *
+ * If comp.tbl is missing, no completeness/contamination check will be performed.
+ *
  * @author Bruce Parrello
  *
  */
-public abstract class Evaluator extends BaseProcessor {
+public abstract class Evaluator extends BaseProcessor implements IConsistencyChecker {
 
     // FIELDS
 
@@ -64,8 +66,6 @@ public abstract class Evaluator extends BaseProcessor {
     private int nGenomes;
     /** output matrix, first index is genome, second is role */
     private int[][] rolesActual;
-    /** array of flags indicating which roles have output */
-    private boolean[] rolesUsed;
     /** role definition map */
     private RoleMap roleDefinitions;
     /** completeness database */
@@ -113,6 +113,7 @@ public abstract class Evaluator extends BaseProcessor {
         this.outDir = new File(System.getProperty("user.dir"));
         this.format = EvalReporter.Type.TEXT;
         this.sensitivity = 0.8;
+        this.compList = null;
     }
 
     /**
@@ -248,14 +249,20 @@ public abstract class Evaluator extends BaseProcessor {
         this.roleDefinitions = RoleMap.load(roleDefineFile);
         // Read the universal role group definitions.
         File compFile = new File(this.modelDir, "comp.tbl");
-        log.info("Reading universal roles from {}.", compFile);
-        this.compList = UniversalRoles.Load(compFile);
-        // Create the roles-used array for the consistency checker.
-        this.rolesUsed = new boolean[this.roles.size()];
+        if (! compFile.exists()) {
+            log.warn("No completeness checks will be performed.");
+            this.getReporter().setHaveCompleteness(false);
+        } else {
+            log.info("Reading universal roles from {}.", compFile);
+            this.compList = UniversalRoles.Load(compFile);
+            this.getReporter().setHaveCompleteness(true);
+        }
     }
 
     /**
-     * @param rolesToUseFile
+     * @return the list of roles in the roles-to-use file
+     *
+     * @param rolesToUseFile	file containing role IDs in the first column
      * @throws IOException
      */
     public static List<String> readRolesToUse(File rolesToUseFile) throws IOException {
@@ -303,11 +310,13 @@ public abstract class Evaluator extends BaseProcessor {
         // Compute the contig metrics.
         gReport.computeMetrics(genome);
         // Find the universal role group for this genome.
-        UniversalRoles uniGroup = UniversalRoles.findGroup(gReport.getSeed(), this.compList);
-        gReport.setGroup(uniGroup.getName());
-        // Compute completeness and contamination.
-        for (String uniRole : uniGroup.getRoles()) {
-            gReport.completeRole(uniRole, roleCounts.getCount(uniRole));
+        if (this.compList != null) {
+            UniversalRoles uniGroup = UniversalRoles.findGroup(gReport.getSeed(), this.compList);
+            gReport.setGroup(uniGroup.getName());
+            // Compute completeness and contamination.
+            for (String uniRole : uniGroup.getRoles()) {
+                gReport.completeRole(uniRole, roleCounts.getCount(uniRole));
+            }
         }
         // Store the rolesActual counts.
         for (int i = 0; i < this.roles.size(); i++) {
@@ -319,26 +328,43 @@ public abstract class Evaluator extends BaseProcessor {
      * Evaluate the consistency of the genomes whose role information is currently in memory.
      *
      * @throws IOException
-     * @throws FileNotFoundException
      */
-    protected void evaluateConsistency() throws IOException, FileNotFoundException {
-        int fWidth = this.roles.size() - 1;
-        INDArray features = Nd4j.zeros(this.nGenomes, fWidth);
+    protected void evaluateConsistency() throws IOException {
+        runConsistency(this, this.roles, this.rolesActual);
+    }
+
+    /**
+     * Evaluate the consistency of the genomes whose role information is currently in memory.
+     *
+     * @param checker		consistency-checker object requesting the analysis
+     * @param roles			list of role IDs
+     * @param rolesActual	matrix of role counts in the genomes, first index is genome, second is role
+     *
+     * @return an array of flags indicating which roles were used in the evaluation
+     *
+     * @throws IOException
+     */
+    public static boolean[] runConsistency(IConsistencyChecker checker, List<String> roles, int[][] rolesActual) throws IOException {
+        boolean[] retVal = new boolean[roles.size()];
+        File roleDir = checker.getRoleDir();
+        int nGenomes = rolesActual.length;
+        int fWidth = roles.size() - 1;
+        INDArray features = Nd4j.zeros(nGenomes, fWidth);
         // Now we loop through the roles, computing predictions for each role.
-        log.info("Analyzing roles for {} genomes.", this.nGenomes);
-        for (int iRole = 0; iRole < this.roles.size(); iRole++) {
-            String role = this.roles.get(iRole);
-            File modelFile = new File(this.roleDir, role + ".ser");
+        log.info("Analyzing roles for {} genomes.", nGenomes);
+        for (int iRole = 0; iRole < roles.size(); iRole++) {
+            String role = roles.get(iRole);
+            File modelFile = new File(roleDir, role + ".ser");
             if (modelFile.exists()) {
-                this.rolesUsed[iRole] = true;
+                retVal[iRole] = true;
                 log.debug("Processing role #{} {}.", iRole, role);
                 // Create the input matrix.  It contains all the columns but the one for our target role.
-                for (int i = 0; i < this.nGenomes; i++) {
+                for (int i = 0; i < nGenomes; i++) {
                     for (int j = 0; j < iRole; j++) {
-                        features.put(i, j, this.rolesActual[i][j]);
+                        features.put(i, j, rolesActual[i][j]);
                     }
                     for (int j = iRole; j < fWidth; j++) {
-                        features.put(i, j, this.rolesActual[i][j+1]);
+                        features.put(i, j, rolesActual[i][j+1]);
                     }
                 }
                 // Read the model and get the normalizer.
@@ -349,7 +375,7 @@ public abstract class Evaluator extends BaseProcessor {
                 // Compute the predictions for this role.
                 INDArray output = model.output(features);
                 // Convert the predictions from one-hots to numbers.
-                for (int i = 0; i < this.nGenomes; i++) {
+                for (int i = 0; i < nGenomes; i++) {
                     int jBest = 0;
                     double vBest = output.getDouble(i, 0);
                     for (int j = 1; j < output.size(1); j++) {
@@ -359,10 +385,24 @@ public abstract class Evaluator extends BaseProcessor {
                             jBest = j;
                         }
                     }
-                    this.reports[i].consistentRole(role, jBest, this.rolesActual[i][iRole]);
+                    checker.storeActual(iRole, role, i, jBest);
                 }
             }
         }
+        return retVal;
+    }
+
+    /**
+     * Store the actual role count for a role.
+     *
+     * @param iRole		index of the role being counted
+     * @param role		ID of the role being counted
+     * @param iGenome	index of the relevant genome
+     * @param count		number of role occurrences
+     */
+    @Override
+    public void storeActual(int iRole, String role, int iGenome, int count) {
+        this.reports[iGenome].consistentRole(role, count, this.rolesActual[iGenome][iRole]);
     }
 
     /**
@@ -482,5 +522,12 @@ public abstract class Evaluator extends BaseProcessor {
      */
     public abstract void validateEvalParms() throws IOException;
 
+    /**
+     * @return the directory of role models
+     */
+    @Override
+    public File getRoleDir() {
+        return this.roleDir;
+    }
 
 }

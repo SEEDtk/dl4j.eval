@@ -49,6 +49,9 @@ public abstract class EvalReporter implements AutoCloseable {
     private int genomeCount;
     /** role definition map */
     private RoleMap roleDefinitions;
+    /** TRUE if completeness data is available, else FALSE */
+    private boolean haveCompleteness;
+
     /**
      * output report format
      */
@@ -83,6 +86,7 @@ public abstract class EvalReporter implements AutoCloseable {
         this.summary = true;
         this.details = true;
         this.version = null;
+        this.haveCompleteness = false;
     }
 
     /**
@@ -360,6 +364,20 @@ public abstract class EvalReporter implements AutoCloseable {
     public void setOutDir(File outDir) {
         this.outDir = outDir;
 
+    }
+
+    /**
+     * @return TRUE if we have completeness data
+     */
+    public boolean hasCompleteness() {
+        return this.haveCompleteness;
+    }
+
+    /**
+     * @param haveCompleteness 	TRUE if we have completeness data, else FALSE
+     */
+    public void setHaveCompleteness(boolean haveCompleteness) {
+        this.haveCompleteness = haveCompleteness;
     }
 
 }

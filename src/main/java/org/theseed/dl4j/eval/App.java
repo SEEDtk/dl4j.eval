@@ -15,6 +15,7 @@ import org.theseed.utils.BaseProcessor;
  * bins		evaluate binning results
  * build	build a genome consistency evaluator from training data
  * analyze	analyze significant contributions among input features
+ * roles	produce predictable-role report
  *
  */
 public class App
@@ -50,6 +51,9 @@ public class App
             break;
         case "build" :
             processor = new BuildProcessor();
+            break;
+        case "roles" :
+            processor = new RolesProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");

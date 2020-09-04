@@ -83,7 +83,7 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
                 try (FastaOutputStream fpOut = new FastaOutputStream(new File(this.getOutDir(), genomeId + ".faa"))) {
                     // Build the evaluation summary table.
                     List<DomContent> qualityRows = new ArrayList<DomContent>(25);
-                    EvalHtmlReporter.qualityRows(gReport, qualityRows);
+                    EvalHtmlReporter.qualityRows(gReport, qualityRows, this.hasCompleteness());
                     // Build the two role tables.  First, the false positives.
                     List<DomContent> tableRows = new ArrayList<DomContent>(this.compareObj.getNewOnlyCount());
                     tableRows.add(tr(th("Peg ID"), th("function"), th("Prot Len").withClass("num"), th("Evidence").withClass("num"),
