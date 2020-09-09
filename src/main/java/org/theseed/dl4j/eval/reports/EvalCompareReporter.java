@@ -5,6 +5,7 @@ package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -18,9 +19,9 @@ import static j2html.TagCreator.*;
 import org.apache.commons.io.FileUtils;
 import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.genome.Annotation;
-import org.theseed.genome.Compare;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
+import org.theseed.genome.compare.CompareFeatures;
 import org.theseed.reports.Html;
 import org.theseed.sequence.FastaOutputStream;
 import org.theseed.sequence.Sequence;
@@ -44,7 +45,7 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
     /** table rows for summary report */
     List<DomContent> summaryRows;
     /** genome comparator */
-    private Compare compareObj;
+    private CompareFeatures compareObj;
 
     private static final Pattern EVIDENCE_PATTERN = Pattern.compile("Annotated with evidence (\\d+) and strength (\\d+\\.\\d+)");
 
@@ -55,7 +56,11 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
 
     @Override
     protected void initialize(File modelDir) throws IOException {
-        this.compareObj = new Compare();
+        try {
+            this.compareObj = new CompareFeatures();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

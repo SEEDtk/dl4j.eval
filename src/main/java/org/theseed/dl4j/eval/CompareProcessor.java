@@ -23,11 +23,12 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.genome.Compare;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeDirectory;
+import org.theseed.genome.compare.CompareORFs;
+import org.theseed.genome.compare.CompareFeatures;
 import org.theseed.locations.Location;
 import org.theseed.reports.Html;
 import org.theseed.sequence.MD5Hex;
@@ -58,7 +59,7 @@ public class CompareProcessor extends BaseProcessor {
     /** map of reference genomes, MD5 to file name */
     private Map<String, File> refGenomes;
     /** comparison processor */
-    private Compare comparator;
+    private CompareORFs comparator;
     /** map of scores to summary table rows with that score, used to sort the output */
     private TreeMap<Double, Collection<DomContent>> summaryData;
     /** list of detail table rows */
@@ -123,7 +124,7 @@ public class CompareProcessor extends BaseProcessor {
     @Override
     public void runCommand() throws Exception {
         // Create the comparator and the MD5 calculator.
-        this.comparator = new Compare();
+        this.comparator = new CompareFeatures();
         this.md5Computer = new MD5Hex();
         // Initialize the summary row table.  Note the header is given a low score to sort it to the top.
         this.summaryData = new TreeMap<Double, Collection<DomContent>>();
@@ -131,14 +132,7 @@ public class CompareProcessor extends BaseProcessor {
         // Get all the reference genomes.  We would like to hold them in memory, but it is too much.
         // Instead, we map the genome MD5 to its file name.
         log.info("Analyzing reference genomes from {}.", this.refDir);
-        GenomeDirectory refGenomeDir = new GenomeDirectory(this.refDir);
-        this.refGenomes = new HashMap<String, File>();
-        for (Genome refGenome : refGenomeDir) {
-            // Get the MD5 for all the contig IDs.
-            String key = this.md5Computer.sequenceMD5(refGenome);
-            // Map the file name to the MD5.
-            this.refGenomes.put(key, refGenomeDir.currFile());
-        }
+        this.refGenomes = this.comparator.getMd5GenomeMap(this.refDir);
         // Get all the genomes.
         log.info("Reading genomes from {}.", this.inDir);
         GenomeDirectory genomesIn = new GenomeDirectory(this.inDir);

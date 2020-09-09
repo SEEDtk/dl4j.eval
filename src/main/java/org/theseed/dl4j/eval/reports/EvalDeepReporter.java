@@ -5,6 +5,8 @@ package org.theseed.dl4j.eval.reports;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -14,9 +16,9 @@ import java.util.Set;
 
 import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
-import org.theseed.genome.Compare;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
+import org.theseed.genome.compare.CompareFeatures;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
@@ -48,7 +50,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
     /** reference genome ID override */
     private double maxProtDist;
     /** genome comparator */
-    private Compare compareObj;
+    private CompareFeatures compareObj;
     /** orf report */
     private List<DomContent> orfReportRows;
 
@@ -57,7 +59,11 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      */
     public EvalDeepReporter() {
         this.maxProtDist = RefGenomeComputer.MAX_GENOME_DIST;
-        this.compareObj = new Compare();
+        try {
+            this.compareObj = new CompareFeatures();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -117,26 +123,30 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
             retVal = Html.formatTable("Comparison of " + gReport.getId() + " with Reference Genome " + this.refGenomeId,
                     tableRows);
             // Check to see if we can do a comparison report.
-            boolean comparable = this.compareObj.compare(gReport.getGenome(), this.refGenomeObj);
-            if (comparable) {
-                // Create the ORF comparison report.
-                Compare comparison = this.compareObj;
-                DomContent report = compareReport(comparison);
-                retVal = join(retVal, report);
-                // Add a report row for this genome to the master ORF report.  We make a safety check in case the reference
-                // genome is terrible and would cause a divide-by-0 error.
-                double denominator = refCounts.getPegCount();
-                if (denominator > 0 && refCounts.getKnownCount() > 0) {
-                    DomContent orfRow = tr(
-                            td(gReport.getGenome().genomeLink()),
-                            td(Html.gPageLink(gReport.getId(), gReport.getName())),
-                            td(this.refGenomeObj.genomeLink()),
-                            Html.numCell(newCounts.getKnownCount() * 100 / (double) refCounts.getKnownCount()),
-                            Html.numCell(this.compareObj.getIdentical() * 100 / denominator),
-                            Html.numCell((this.compareObj.getIdentical() + this.compareObj.getShorter() + this.compareObj.getLonger()) * 100 / denominator),
-                            Html.numCell(this.compareObj.getNewOnlyCount() * 100 / denominator));
-                    this.orfReportRows.add(orfRow);
+            try {
+                boolean comparable = this.compareObj.compare(gReport.getGenome(), this.refGenomeObj);
+                if (comparable) {
+                    // Create the ORF comparison report.
+                    CompareFeatures comparison = this.compareObj;
+                    DomContent report = compareReport(comparison);
+                    retVal = join(retVal, report);
+                    // Add a report row for this genome to the master ORF report.  We make a safety check in case the reference
+                    // genome is terrible and would cause a divide-by-0 error.
+                    double denominator = refCounts.getPegCount();
+                    if (denominator > 0 && refCounts.getKnownCount() > 0) {
+                        DomContent orfRow = tr(
+                                td(gReport.getGenome().genomeLink()),
+                                td(Html.gPageLink(gReport.getId(), gReport.getName())),
+                                td(this.refGenomeObj.genomeLink()),
+                                Html.numCell(newCounts.getKnownCount() * 100 / (double) refCounts.getKnownCount()),
+                                Html.numCell(this.compareObj.getIdentical() * 100 / denominator),
+                                Html.numCell((this.compareObj.getIdentical() + this.compareObj.getShorter() + this.compareObj.getLonger()) * 100 / denominator),
+                                Html.numCell(this.compareObj.getNewOnlyCount() * 100 / denominator));
+                        this.orfReportRows.add(orfRow);
+                    }
                 }
+            } catch (UnsupportedEncodingException e) {
+                throw new RuntimeException(e);
             }
         }
         return retVal;

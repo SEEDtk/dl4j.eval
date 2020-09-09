@@ -19,10 +19,10 @@ import org.theseed.dl4j.eval.ContigAnalysis;
 import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
 import org.theseed.dl4j.eval.GenomeStats.ProblematicRole;
-import org.theseed.genome.Compare;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
+import org.theseed.genome.compare.CompareFeatures;
 import org.theseed.locations.Location;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
@@ -359,7 +359,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param comparison	ORF comparison results
      * @return
      */
-    public DomContent compareReport(Compare comparison) {
+    public DomContent compareReport(CompareFeatures comparison) {
         List<DomContent> tableRows = new ArrayList<DomContent>(10);
         Html.detailRow(tableRows, "Number of ORFs only annotated in the reference genome", Html.numCell(comparison.getOldOnlyCount()));
         Html.detailRow(tableRows, "Number of ORFs only annotated in this genome", Html.numCell(comparison.getNewOnlyCount()));
