@@ -30,6 +30,7 @@ import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  *
@@ -131,7 +132,7 @@ public abstract class Evaluator extends BaseProcessor implements IConsistencyChe
      * @throws IOException
      */
     @Override
-    protected final boolean validateParms() throws IOException {
+    protected final boolean validateParms() throws IOException, ParseFailureException {
         boolean retVal = false;
         if (! this.modelDir.isDirectory()) {
             throw new FileNotFoundException("Model directory " + this.modelDir + " not found or invalid.");
@@ -150,7 +151,7 @@ public abstract class Evaluator extends BaseProcessor implements IConsistencyChe
             if (this.getReporter() instanceof EvalDeepReporter) {
                 // Validate the sensitivity.
                 if (this.sensitivity < 0 || this.sensitivity >= 1.0)
-                    throw new IllegalArgumentException("Invalid sensitivity: must be between 0 and 1, exclusive.");
+                    throw new ParseFailureException("Invalid sensitivity: must be between 0 and 1, exclusive.");
                 // Set the special parameters.
                 EvalDeepReporter deepReporter = ((EvalDeepReporter) this.getReporter());
                 deepReporter.setSensitivity(this.sensitivity);
