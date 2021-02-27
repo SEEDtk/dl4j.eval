@@ -148,7 +148,7 @@ public class BinProcessor extends Evaluator implements ICommand {
                     String gId = gObject.getId();
                     log.debug("Updating GTO for {}.", gId);
                     gReport.store(gObject, this.getRoleDefinitions(), version, this.getOptions());
-                    gObject.update(binFiles[i]);
+                    gObject.save(binFiles[i]);
                     indexStream.format("%s\t%s\t%d%n",
                             gId, gObject.getName(), (gReport.isGood() ? 1 : 0));
                 }

@@ -147,7 +147,7 @@ public class EvalProcessor extends Evaluator  {
                 log.debug("Updating GTO for {}.", gId);
                 gReport.store(gObject, this.getRoleDefinitions(), version, this.getOptions());
                 File outFile = new File(this.getOutDir(), gId + ".gto");
-                gObject.update(outFile);
+                gObject.save(outFile);
             }
         }
     }
