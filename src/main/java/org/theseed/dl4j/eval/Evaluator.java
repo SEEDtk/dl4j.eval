@@ -8,16 +8,14 @@ import java.util.List;
 import java.util.Scanner;
 
 import org.apache.commons.io.FileUtils;
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.util.ModelSerializer;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
+import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.eval.reports.EvalDeepReporter;
 import org.theseed.dl4j.eval.reports.EvalReporter;
 import org.theseed.dl4j.eval.reports.FileRefGenomeComputer;
@@ -368,13 +366,10 @@ public abstract class Evaluator extends BaseProcessor implements IConsistencyChe
                         features.put(i, j, rolesActual[i][j+1]);
                     }
                 }
-                // Read the model and get the normalizer.
-                MultiLayerNetwork model = ModelSerializer.restoreMultiLayerNetwork(modelFile, false);
-                DataNormalization normalizer = ModelSerializer.restoreNormalizerFromFile(modelFile);
-                // Normalize the inputs.
-                normalizer.transform(features);
+                // Read the model.
+                RandomForest model = RandomForest.load(modelFile);
                 // Compute the predictions for this role.
-                INDArray output = model.output(features);
+                INDArray output = model.predict(features);
                 // Convert the predictions from one-hots to numbers.
                 for (int i = 0; i < nGenomes; i++) {
                     int jBest = 0;

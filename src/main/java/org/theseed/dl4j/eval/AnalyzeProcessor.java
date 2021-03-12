@@ -11,12 +11,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
-import org.deeplearning4j.util.ModelSerializer;
 import org.kohsuke.args4j.Argument;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.eval.reports.RoleInfluence;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.utils.BaseProcessor;
@@ -85,19 +84,14 @@ public class AnalyzeProcessor extends BaseProcessor {
             if (! modelFile.exists())
                 log.warn("No model file for {}.", role.getId());
             else {
-                MultiLayerNetwork model = ModelSerializer.restoreMultiLayerNetwork(modelFile, false);
-                // Get the input layer of the model.
-                org.deeplearning4j.nn.api.Layer layer = model.getLayers()[0];
-                // Get the coefficients.  Each row is an input, each column is an output.
-                INDArray weights = layer.paramTable().get("W");
-                log.info("Weight matrix has {} rows and {} columns.", weights.rows(), weights.columns());
-                for (int j = 0; j < weights.rows(); j++) {
-                    // Determine the role to which this row's weights belong and add in the absolute value
-                    // divided by the number of matrix columns.
-                    double dCol = (double) weights.columns();
+                RandomForest model = RandomForest.load(modelFile);
+                // Get the impact.
+                INDArray weights = model.computeImpact();
+                log.info("Weight matrix has {} elements.", weights.length());
+                for (int j = 0; j < weights.length(); j++) {
+                    // Determine the role to which this weight belongs and add it it.
                     int jReal = (j >= i ? j + 1 : j);
-                    for (int k = 0; k < weights.columns(); k++)
-                        this.roles[jReal].increment(Math.abs(weights.getDouble(j, k) / dCol));
+                    this.roles[jReal].increment(Math.abs(weights.getDouble(j)));
                 }
             }
         }
