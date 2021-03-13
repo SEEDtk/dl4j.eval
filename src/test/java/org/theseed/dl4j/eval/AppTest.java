@@ -155,7 +155,7 @@ public class AppTest extends TestCase
         testGenome.countSeed(StringUtils.repeat('X', 500));
         assertTrue(testGenome.isGoodSeed());
         // Test peg counting.
-        Genome myGenome = new Genome(new File("src/test", "test.gto"));
+        Genome myGenome = new Genome(new File("data", "test.gto"));
         testGenome = new GenomeStats(myGenome);
         for (Feature peg : myGenome.getPegs())
             testGenome.countPeg(peg);
@@ -224,7 +224,7 @@ public class AppTest extends TestCase
         assertThat(uniRoles.inGroup(p563191_3), equalTo(1));
         assertThat(uniRoles.inGroup(p1262687_3), equalTo(1));
         assertThat(uniRoles.inGroup(p1104577_5), equalTo(1));
-        File compFile = new File("src/test", "comp.tbl");
+        File compFile = new File("data", "comp.tbl");
         List<UniversalRoles> compList = UniversalRoles.Load(compFile);
         assertThat(compList.size(), equalTo(4));
         uniRoles = compList.get(0);
