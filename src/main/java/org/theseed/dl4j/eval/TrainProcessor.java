@@ -8,18 +8,24 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.PrintWriter;
+import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
-
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
+import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.api.iterator.KFoldIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.counters.CountMap;
-import org.theseed.counters.RegressionStatistics;
-import org.theseed.dl4j.train.CrossValidateProcessor;
+import org.theseed.dl4j.TabbedDataSetReader;
+import org.theseed.dl4j.decision.RandomForest;
+import org.theseed.dl4j.decision.RandomForest.Method;
+import org.theseed.dl4j.decision.RandomForest.Parms;
 import org.theseed.io.ParmDescriptor;
 import org.theseed.io.ParmFile;
 import org.theseed.io.TabbedLineReader;
@@ -53,14 +59,12 @@ public class TrainProcessor extends BaseProcessor {
 
     // FIELDS
 
-    /** map of role IDs to maximum labels */
-    private CountMap<String> roleMap;
     /** training file */
     private File trainingFile;
-    /** array of training file labels */
-    private String[] labels;
-    /** label file */
-    private File labelFile;
+    /** testing file */
+    private File testingFile;
+    /** roles-to-use file */
+    private File roleListFile;
     /** role file subdirectory */
     private File rolesDir;
     /** output stream */
@@ -69,6 +73,10 @@ public class TrainProcessor extends BaseProcessor {
     private Set<String> processedRoles;
     /** parameter file */
     private File parmFile;
+    /** list of metadata columns */
+    private static final List<String> META_COLS = Arrays.asList("genome");
+    /** number of roles saved */
+    private int saveCount;
 
     // COMMAND LINE
 
@@ -93,8 +101,8 @@ public class TrainProcessor extends BaseProcessor {
     private String parmFileName;
 
     /** model directory */
-    @Argument(index = 0, metaVar = "modelDir", usage = "model directory", required = true)
-    private File modelDir;
+    @Argument(index = 0, metaVar = "evalDir", usage = "evaluation directory", required = true)
+    private File evalDir;
 
     @Override
     public void setDefaults() {
@@ -108,24 +116,29 @@ public class TrainProcessor extends BaseProcessor {
 
     @Override
     public boolean validateParms() throws IOException, ParseFailureException {
-        if (! this.modelDir.isDirectory()) {
-            throw new FileNotFoundException("Model directory " + this.modelDir + " not found or invalid.");
+        if (! this.evalDir.isDirectory()) {
+            throw new FileNotFoundException("Model directory " + this.evalDir + " not found or invalid.");
         } else {
             // Compute the parm file name.
-            this.parmFile = new File(this.modelDir, this.parmFileName);
+            this.parmFile = new File(this.evalDir, this.parmFileName);
             if (! this.parmFile.canRead())
                 throw new FileNotFoundException("Parameter file " + this.parmFile + " not found or unreadable.");
             // Compute the training file name.
-            this.trainingFile = new File(this.modelDir, "training.tbl");
-            if (! this.trainingFile.exists()) {
-                throw new FileNotFoundException("Model directory " + this.modelDir + " does not contain a training file.");
-            }
-            // Compute the label file name.
-            this.labelFile = new File(this.modelDir, "labels.txt");
+            this.trainingFile = new File(this.evalDir, "training.tbl");
+            if (! this.trainingFile.exists())
+                throw new FileNotFoundException("Model directory " + this.evalDir + " does not contain a training file.");
+            // Compute the testing file name.
+            this.testingFile = new File(this.evalDir, "testing.tbl");
+            if (! this.testingFile.exists())
+                throw new FileNotFoundException("Model directory " + this.evalDir + " does not contain a testing file.");
+            // Finally, compute the roles-to-use file name/
+            this.roleListFile = new File(this.evalDir, "roles.to.use");
+            if (! this.roleListFile.canRead())
+                throw new FileNotFoundException("Role list file " + this.roleListFile + " not found or unreadable.");
             // Insure we have the Roles subdirectory.
-            this.rolesDir = new File(this.modelDir, "Roles");
+            this.rolesDir = new File(this.evalDir, "Roles");
             if (! rolesDir.isDirectory()) {
-                log.info("Creating Roles directory in {}.", this.modelDir);
+                log.info("Creating Roles directory in {}.", this.evalDir);
                 boolean ok = rolesDir.mkdir();
                 if (! ok)
                     throw new IOException("Error creating Roles directory.");
@@ -134,6 +147,11 @@ public class TrainProcessor extends BaseProcessor {
                 log.info("Erasing roles directory {}.", this.rolesDir);
                 FileUtils.cleanDirectory(this.rolesDir);
             }
+            // Verify the validation parameters.
+            if (this.minAcc > 1.0 || this.minAcc < 0)
+                throw new ParseFailureException("Minimum accuracy must be between 0 and 1.");
+            if (this.maxIqr > 1.0 || this.maxIqr < 0)
+                throw new ParseFailureException("Maximum IQR must be between 0 and 1.");
             // Verify the number of folds.
             if (this.foldK < 2)
                 throw new ParseFailureException("Invalid fold count.  Must be 2 or more.");
@@ -144,13 +162,18 @@ public class TrainProcessor extends BaseProcessor {
                 this.output = System.out;
                 // Denote no roles were pre-processed.
                 this.processedRoles = Collections.emptySet();
-                // Clear the trial log.
-                File trials = new File(this.modelDir, "trials.log");
-                if (trials.exists())
-                    FileUtils.forceDelete(trials);
+                this.saveCount = 0;
             } else {
                 // Resume processing.  Save the roles we've already seen.
-                this.processedRoles = TabbedLineReader.readSet(this.resumeFile, "role_id");
+                this.processedRoles = new HashSet<String>();
+                try (TabbedLineReader reader = new TabbedLineReader(this.resumeFile)) {
+                    int idCol = reader.findField("role_id");
+                    int goodCol = reader.findField("good");
+                    for (TabbedLineReader.Line line : reader) {
+                        this.processedRoles.add(line.get(idCol));
+                        if (line.getFlag(goodCol)) this.saveCount++;
+                    }
+                }
                 // Open the resume file for append-style output with autoflush.
                 FileOutputStream outStream = new FileOutputStream(this.resumeFile, true);
                 this.output = new PrintStream(outStream, true);
@@ -161,79 +184,129 @@ public class TrainProcessor extends BaseProcessor {
 
     @Override
     public void runCommand() throws Exception {
-        // Here we must analyze the training file.  For each role, we need the distribution of labels.
-        this.roleMap = new CountMap<String>();
-        try (TabbedLineReader trainingStream = new TabbedLineReader(this.trainingFile)) {
-            log.info("Analyzing training data in {}.", this.trainingFile.toString());
-            // Get the label array.
-            this.labels = trainingStream.getLabels();
-            // Now read the training data.
-            for (TabbedLineReader.Line line : trainingStream) {
-                for (int i = 1; i < trainingStream.size(); i++) {
-                    String role = this.labels[i];
-                    int current = this.roleMap.getCount(role);
-                    int newValue = line.getInt(i);
-                    if (newValue > current) this.roleMap.setCount(role, newValue);
-                }
-            }
-        }
-        log.info("{} roles found for processing.", this.roleMap.size());
-        // Create the cross-validation processor.
-        CrossValidateProcessor processor = new CrossValidateProcessor();
-        // Create the parameters for it.
-        String[] crossParms = new String[] { "--type", "DECISION", "--folds", Integer.toString(this.foldK),
-                "--parms", this.parmFile.toString(), this.modelDir.toString() };
-        // Load the parameter file.
-        ParmFile parms = new ParmFile(this.parmFile);
-        // Update the ID column.
-        parms.add(new ParmDescriptor("id", this.labels[0], "ID column for accuracy reports"));
-        parms.add(new ParmDescriptor("meta", this.labels[0], "meta-data columns in input"));
-        // Now loop through the roles, creating the models.
-        for (int i = 1; i < this.labels.length; i++) {
-            // Get the role ID.
-            String role = this.labels[i];
-            if (this.processedRoles.contains(role)) {
-                log.info("{} already processed.", role);
-            } else {
-                // Get the maximum label for this role.
-                int maxLabel = this.roleMap.getCount(role);
-                // Create the label file.
-                try (PrintWriter labelStream = new PrintWriter(this.labelFile)) {
-                    for (int j = 0; j <= maxLabel; j++) {
-                        labelStream.println(j);
+        // These are used for timing computations.
+        long activeTime = 0;
+        int processCount = 0;
+        // Read in the two datasets.
+        DataSet trainingSet = readDataSet(this.trainingFile);
+        log.info("{} records in training set.", trainingSet.getFeatures().rows());
+        DataSet testingSet = readDataSet(this.testingFile);
+        log.info("{} records in testing set.", testingSet.getFeatures().rows());
+        // Now we need to get the hyper-parameters from the parm file.
+        RandomForest.Parms hParms = new RandomForest.Parms(trainingSet);
+        this.parseParameters(hParms);
+        // Loop through the roles.
+        try (TabbedLineReader roleReader = new TabbedLineReader(this.roleListFile, 3)) {
+            int roleI = 1;
+            for (TabbedLineReader.Line line : roleReader) {
+                String roleId = line.get(0);
+                String labelString = line.get(2);
+                if (this.processedRoles.contains(roleId))
+                    log.info("Skipping role {}: {} (already processed).", roleI, roleId);
+                else {
+                    long start = System.currentTimeMillis();
+                    log.info("Processing role {}: {} with occurrence counts {}.", roleI, roleId, labelString);
+                    // Create the training and testing sets for this role.
+                    DataSet roleTrainingSet = EvalUtilities.prepareData(trainingSet, roleI-1, labelString);
+                    DataSet roleTestingSet = EvalUtilities.prepareData(testingSet, roleI-1, labelString);
+                    log.info("Generating classifier.");
+                    RandomForest classifier = new RandomForest(roleTrainingSet, hParms);
+                    double accuracy = classifier.getAccuracy(roleTestingSet);
+                    log.info("Accuracy for {} classifier is {}.", roleId, accuracy);
+                    if (accuracy < this.minAcc)
+                        output.format("%d\t%s\t%8.4f\t\t%n", roleI, roleId, accuracy);
+                    else if (this.maxIqr == 1.0) {
+                        // We have good accuracy and we are in fast mode.  Save the classifier.
+                        File classFile = new File(this.rolesDir, roleId + ".ser");
+                        this.saveCount++;
+                        log.info("Saving classifier to {}. {} saved out of {} so far.",
+                                classFile, this.saveCount, roleI);
+                        classifier.save(classFile);
+                        output.format("%d\t%s\t%8.4f\t\t1%n", roleI, roleId, accuracy);
+                    } else {
+                        // We have good accuracy but we must verify the stability of the data.
+                        KFoldIterator validator = new KFoldIterator(this.foldK, roleTrainingSet);
+                        DescriptiveStatistics stats = new DescriptiveStatistics();
+                        int foldI = 1;
+                        while (validator.hasNext()) {
+                            log.info("Testing fold {}.", foldI);
+                            DataSet trainFold = validator.next();
+                            RandomForest classFold = new RandomForest(trainFold, hParms);
+                            double accFold = classFold.getAccuracy(validator.testFold());
+                            stats.addValue(accFold);
+                            foldI++;
+                        }
+                        // Compute the IQR.
+                        double iqr = stats.getPercentile(75.0) - stats.getPercentile(25.0);
+                        if (iqr > this.maxIqr) {
+                            log.info("Role {} rejected due to IQR = {}.", roleId, iqr);
+                            output.format("%d\t%s\t%8.4f\t%8.4f\t%n", roleI, roleId, accuracy, iqr);
+                        } else {
+                            File classFile = new File(this.rolesDir, roleId + ".ser");
+                            this.saveCount++;
+                            log.info("Saving classifier to {}. IQR = {}. {} saved out of {} so far.",
+                                    classFile, iqr, this.saveCount, roleI);
+                            classifier.save(classFile);
+                            output.format("%d\t%s\t%8.4f\t%8.4f\t1%n", roleI, roleId, accuracy, iqr);
+                        }
                     }
+                    activeTime += (System.currentTimeMillis() - start);
+                    processCount++;
+                    log.info("Average time per role = {}.", Duration.ofMillis(activeTime).dividedBy(processCount).toString());
                 }
-                // Now we need to update the parameter file for this role.
-                parms.add(new ParmDescriptor("col", role, "role being predicted"));
-                // Add the model file name.
-                File modelFile = new File(this.rolesDir, role + ".ser");
-                parms.add(new ParmDescriptor("name", modelFile.toString(), "output model file"));
-                // Add the comment.
-                String comment = String.format("Role %d: %s, maximum count %d", i, role, maxLabel);
-                parms.add(new ParmDescriptor("comment", comment, "Comment for trial log"));
-                // Save the parm file.
-                parms.save(this.parmFile);
-                double rating = 0.0;
-                double iqr = 1.0;
-                // Create the final argument buffer.
-                boolean ok = processor.parseCommand(crossParms);
-                if (ok) {
-                    processor.run();
-                    RegressionStatistics stats = processor.getResults();
-                    rating = 1.0 - stats.trimean();
-                    iqr = stats.iqr();
-                } else {
-                    throw new RuntimeException("Error processing role.");
-                }
-                String goodFlag = "1";
-                if (rating < this.minAcc || iqr > this.maxIqr) {
-                    // Here we can't keep the model.
-                    log.info("Model {} rejected due to insufficient accuracy (trimean = {}, iqr = {}.", modelFile, rating, iqr);
-                    FileUtils.forceDelete(modelFile);
-                    goodFlag = "";
-                }
-                this.output.format("%d\t%s\t%8.5f\t%8.5f\t%s%n", i, role, rating, iqr, goodFlag);
+                // Increment the role counter.
+                roleI++;
             }
         }
     }
+
+    /**
+     * Parse the parameter file and use it to override the specified hyper-parameters.
+     *
+     * @param hParms	hyper-parameters to override
+     *
+     * @throws IOException
+     */
+    private void parseParameters(Parms hParms) throws IOException {
+        ParmFile parms = new ParmFile(this.parmFile);
+        ParmDescriptor parm = parms.get("maxDepth");
+        if (parm != null && ! parm.isCommented())
+            hParms.setMaxDepth(Integer.valueOf(parm.getValue()));
+        parm = parms.get("minSplit");
+        if (parm != null && ! parm.isCommented())
+            hParms.setLeafLimit(Integer.valueOf(parm.getValue()));
+        parm = parms.get("maxFeatures");
+        if (parm != null && ! parm.isCommented())
+            hParms.setNumFeatures(Integer.valueOf(parm.getValue()));
+        parm = parms.get("nEstimators");
+        if (parm != null && ! parm.isCommented())
+            hParms.setNumTrees(Integer.valueOf(parm.getValue()));
+        parm = parms.get("sampleSize");
+        if (parm != null && ! parm.isCommented())
+            hParms.setNumExamples(Integer.valueOf(parm.getValue()));
+        parm = parms.get("seed");
+        if (parm != null && ! parm.isCommented())
+            RandomForest.setSeed(Integer.valueOf(parm.getValue()));
+        parm = parms.get("method");
+        if (parm != null && ! parm.isCommented())
+            hParms.setMethod(Method.valueOf(parm.getValue()));
+    }
+
+    /**
+     * Read all the data from a training/testing file.
+     *
+     * @param inFile		file to read
+     *
+     * @return a dataset of the data in the file; it will not contain labels, only features
+     *
+     * @throws IOException
+     */
+    protected DataSet readDataSet(File inFile) throws IOException {
+        TabbedDataSetReader dataReader = new TabbedDataSetReader(inFile, META_COLS);
+        DataSet trainingSet = dataReader.readAll();
+        RandomForest.flattenDataSet(trainingSet);
+        dataReader.close();
+        return trainingSet;
+    }
+
 }

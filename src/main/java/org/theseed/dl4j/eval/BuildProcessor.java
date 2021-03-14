@@ -22,12 +22,15 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.theseed.counters.CountMap;
 import org.theseed.genome.Feature;
+import org.theseed.genome.Genome;
+import org.theseed.genome.GenomeDirectory;
 import org.theseed.io.MarkerFile;
 import org.theseed.io.Shuffler;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.RoleMap;
 import org.theseed.subsystems.SubsystemRoleFactory;
 import org.theseed.utils.BaseProcessor;
+import org.theseed.utils.ParseFailureException;
 
 /**
  * This command reads a PATRIC CoreSEED dump and builds training files.  The PATRIC CoreSEED dump consists
@@ -67,6 +70,7 @@ import org.theseed.utils.BaseProcessor;
  * --maxMulti	the maxmimum number of times a role can be contained in a genome for it to be considered useful; the
  * 				default is 5
  * --clear		erase the output directory before processing
+ * --test		name of a directory of GTOs; if specified, the GTOs will be used to create a testing set
  *
  * @author Bruce Parrello
  *
@@ -107,6 +111,10 @@ public class BuildProcessor extends BaseProcessor {
     @Option(name = "--clear", usage = "if specified, the output directory will be erased before processing")
     private boolean clearFlag;
 
+    /** testing-set GTO directory */
+    @Option(name = "--test", metaVar = "GTOrefs", usage = "directory of GTOs to use to create a testing set")
+    private File testDir;
+
     /** input annotation directory */
     @Argument(index = 0, metaVar = "Annotations/0", usage = "input annotation directory", required = true)
     private File annoDir;
@@ -125,10 +133,11 @@ public class BuildProcessor extends BaseProcessor {
         this.maxMulti = 5;
         this.minOccur = 100;
         this.clearFlag = false;
+        this.testDir = null;
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         // Verify the coreSEED directory.
         if (! this.coreEvalDir.isDirectory())
             throw new FileNotFoundException(this.coreEvalDir + " is not found or is not a directory.");
@@ -143,11 +152,19 @@ public class BuildProcessor extends BaseProcessor {
         File parmFile = new File(this.coreEvalDir, "parms.prm");
         if (! parmFile.canRead())
             throw new FileNotFoundException(this.coreEvalDir + " does not have a readable parms.prm file.");
+        // verify the testing directory.
+        if (this.testDir != null && ! this.testDir.isDirectory())
+            throw new FileNotFoundException(this.testDir + " is not found or invalid.");
         // Verify the input files.
         if (! this.annoDir.isDirectory())
             throw new FileNotFoundException(this.annoDir + " is not found or is notoes not a directory.");
         if (! this.subFile.canRead())
             throw new FileNotFoundException(this.subFile + " is not found or unreadable.");
+        // Verify the tuning parameters.
+        if (this.maxMulti < 1 || this.maxMulti > 10)
+            throw new ParseFailureException("Maxmimum multiplicity must be between 1 and 10 inclusive.");
+        if (this.minOccur < 1)
+            throw new ParseFailureException("Minimum occurrences must be at least 1.");
         // Set up the output directory.
         if (this.outDir.isDirectory()) {
             if (! this.clearFlag)
@@ -231,18 +248,35 @@ public class BuildProcessor extends BaseProcessor {
                 writer.format("%s\t%d\t%s%n", roleId, gCount, oCounts);
             }
         }
+        // Create the role-id header.
+        String roles = this.roleList.stream().collect(Collectors.joining("\t"));
         // Now write the training set.
         try (PrintWriter outStream = new PrintWriter(new File(this.outDir, "training.tbl"))) {
             // First we write the header.
-            String roles = this.roleList.stream().collect(Collectors.joining("\t"));
             outStream.format("genome\t%s%n", roles);
-            // Randomly shuffle the genomes so we get a random testing set.
+            // Shuffle the genomes so we get a random distribution.
             Shuffler<String> genomeList = new Shuffler<String>(this.genomeMap.keySet());
             genomeList.shuffle(genomeList.size());
             log.info("Writing training.tbl.");
             // Now we write the genomes.
             for (String genome : genomeList)
                 outputGenome(outStream, genome);
+        }
+        // If we have a testing directory, write the testing set.
+        if (this.testDir != null) {
+            try (PrintWriter outStream = new PrintWriter(new File(this.outDir, "testing.tbl"))) {
+                // First we write the header.
+                outStream.format("genome\t%s%n", roles);
+                // Loop through the genomes.
+                GenomeDirectory genomes = new GenomeDirectory(this.testDir);
+                for (Genome genome : genomes) {
+                    log.info("Processing testing genome {}.", genome);
+                    CountMap<String> gCounts = new CountMap<String>();
+                    for (Feature feat : genome.getPegs())
+                        feat.getUsefulRoles(this.subsystemRoles).stream().forEach(x -> gCounts.count(x.getId()));
+                    this.writeCounts(outStream, genome.getId(), gCounts);
+                }
+            }
         }
     }
 
@@ -256,8 +290,20 @@ public class BuildProcessor extends BaseProcessor {
         CountMap<String> genomeCounts = this.genomeMap.get(genome);
         if (genomeCounts == null)
             throw new IllegalArgumentException("Genome " + genome + " not found in raw.table.");
-        String counts = this.roleList.stream().map(r -> Integer.toString(genomeCounts.getCount(r))).collect(Collectors.joining("\t"));
-        outStream.format("%s\t%s%n", genome, counts);
+        writeCounts(outStream, genome, genomeCounts);
+    }
+
+    /**
+     * Write the specified genome counts to a training/testing file.
+     *
+     * @param outStream		output writer
+     * @param genomeId		ID of the relevant genome
+     * @param genomeCounts	map of role occurrence counts
+     */
+    protected void writeCounts(PrintWriter outStream, String genomeId, CountMap<String> genomeCounts) {
+        String counts = this.roleList.stream().map(r -> Integer.toString(genomeCounts.getCount(r)))
+                .collect(Collectors.joining("\t"));
+        outStream.format("%s\t%s%n", genomeId, counts);
     }
 
 }
