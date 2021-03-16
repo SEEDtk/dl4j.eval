@@ -688,7 +688,7 @@ public class GenomeStats {
      * @return TRUE if this genome is consistently annotated, else FALSE
      */
     public boolean isConsistent() {
-        return (getFinePercent() >= 87.0);
+        return (getFinePercent() >= 85.0);
     }
 
     /**

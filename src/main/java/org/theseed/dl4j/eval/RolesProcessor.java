@@ -132,7 +132,7 @@ public class RolesProcessor extends BaseProcessor implements IConsistencyChecker
         this.overCounts = new int[this.roles.size()];
         this.underCounts = new int[this.roles.size()];
         // Now run the consistency checker.
-        boolean[] rolesUsed = Evaluator.runConsistency(this, this.roles, this.rolesActual);
+        boolean[] rolesUsed = Evaluator.runConsistency(this, this.roles, this.rolesActual, this.nGenomes);
         // Compute the conversion factor from a good-count to percent accuracy.
         double factor = 100.0 / this.nGenomes;
         // Produce the output.

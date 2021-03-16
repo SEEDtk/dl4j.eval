@@ -329,7 +329,7 @@ public abstract class Evaluator extends BaseProcessor implements IConsistencyChe
      * @throws IOException
      */
     protected void evaluateConsistency() throws IOException {
-        runConsistency(this, this.roles, this.rolesActual);
+        runConsistency(this, this.roles, this.rolesActual, this.nGenomes);
     }
 
     /**
@@ -338,15 +338,16 @@ public abstract class Evaluator extends BaseProcessor implements IConsistencyChe
      * @param checker		consistency-checker object requesting the analysis
      * @param roles			list of role IDs
      * @param rolesActual	matrix of role counts in the genomes, first index is genome, second is role
+     * @param nGenomes		number of genomes in the matrix
      *
      * @return an array of flags indicating which roles were used in the evaluation
      *
      * @throws IOException
      */
-    public static boolean[] runConsistency(IConsistencyChecker checker, List<String> roles, int[][] rolesActual) throws IOException {
+    public static boolean[] runConsistency(IConsistencyChecker checker, List<String> roles, int[][] rolesActual,
+            int nGenomes) throws IOException {
         boolean[] retVal = new boolean[roles.size()];
         File roleDir = checker.getRoleDir();
-        int nGenomes = rolesActual.length;
         int fWidth = roles.size() - 1;
         INDArray features = Nd4j.zeros(nGenomes, fWidth);
         // Now we loop through the roles, computing predictions for each role.

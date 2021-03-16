@@ -16,6 +16,8 @@ import org.theseed.utils.BaseProcessor;
  * build	build a genome consistency evaluator from training data
  * analyze	analyze significant contributions among input features
  * roles	produce predictable-role report
+ * p3All	create a master directory of evaluation GTOs for PATRIC prokaryotes
+ * comp3	produce completeness engine from master directory
  *
  */
 public class App
@@ -54,6 +56,12 @@ public class App
             break;
         case "roles" :
             processor = new RolesProcessor();
+            break;
+        case "p3All" :
+            processor = new P3AllProcessor();
+            break;
+        case "comp" :
+            processor = new CompletenessRolesProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
