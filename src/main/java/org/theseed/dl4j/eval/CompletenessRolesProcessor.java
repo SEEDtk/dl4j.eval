@@ -219,6 +219,8 @@ public class CompletenessRolesProcessor extends BaseProcessor {
                 }
             }
         }
+        // Clean up the files.
+        this.inStream.close();
         log.info("All done. {} completeness groups output.", outCount);
     }
 

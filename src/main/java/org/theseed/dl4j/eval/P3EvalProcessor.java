@@ -91,7 +91,6 @@ public class P3EvalProcessor extends Evaluator {
         this.validateOutputDir(this.outputDir, this.clearOutputDir);
         // Compute the input column index.
         this.colIdx = this.inStream.findField(this.colId);
-            // Denote we're ready to run.
     }
 
     @Override
@@ -139,6 +138,7 @@ public class P3EvalProcessor extends Evaluator {
             this.processBatch();
         }
         // Clean up processing.
+        this.inStream.close();
         this.close();
     }
 
