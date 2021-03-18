@@ -99,7 +99,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
             log.info("Genome {} is a reference to itself.  No useful data is available.", refGenomeId);
         } else {
             // Read in the genome and buffer it in case we reuse it.
-            retVal = this.referenceBuffer.computeIfAbsent(refGenomeId, k -> P3Genome.Load(p3, k, P3Genome.Details.PROTEINS));
+            retVal = this.referenceBuffer.computeIfAbsent(refGenomeId, k -> P3Genome.load(p3, k, P3Genome.Details.PROTEINS));
         }
         return retVal;
     }

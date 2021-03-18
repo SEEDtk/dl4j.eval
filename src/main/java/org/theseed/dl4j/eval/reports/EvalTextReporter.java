@@ -19,8 +19,9 @@ import org.theseed.dl4j.eval.GenomeStats;
  */
 public class EvalTextReporter extends EvalReporter {
 
-    private static final String SUMMARY_FORMAT = "%s\t%s\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8d\t%-8s\t%8.2f\t%s%n";
-    private static final String END_FORMAT     = "%s\t%s\t%s\t%8d\t%8d\t%8d\t%8d\t%s\t%8d\t%8d\t%8d%n";
+    private static final String SUMMARY_FORMAT = "%s\t%s\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8.2f\t%8d\t%-8s\t%-8s\t%8.2f\t%s%n";
+    private static final String END_FORMAT     = "%s\t%s\t%s\t%8d\t%8d\t%8d\t%8d\t%s\t%8d\t%8d\t%8d\t%8d%n";
+
     // FIELDS
     /** output stream for the summary report */
     PrintWriter summaryStream;
@@ -37,7 +38,7 @@ public class EvalTextReporter extends EvalReporter {
         File outFile = new File(this.getOutDir(), "summary.tsv");
         this.summaryStream = new PrintWriter(outFile);
         // Produce the summary header.
-        this.summaryStream.println("Genome\tName\tCoarse\tFine\tCompleteness\tContamination\tHypothetical\tContigs\tGood_Seed\tScore\tGood");
+        this.summaryStream.println("Genome\tName\tCoarse\tFine\tCompleteness\tContamination\tHypothetical\tContigs\tGood_Seed\tSSU rRNA\tScore\tGood");
     }
 
     @Override
@@ -69,6 +70,7 @@ public class EvalTextReporter extends EvalReporter {
             genomeStream.format("*\tCDS Count\t%d\t%n", gReport.getPegCount());
             genomeStream.format("*\tPLFAM Protein Count\t%d\t%n", gReport.getPlfamCount());
             genomeStream.format("*\tGood PheS found\t%s\t%n", (gReport.isGoodSeed() ? "Yes" : "No"));
+            genomeStream.format("*\tSSU rRNA Sequence Found\t%s\t%n", (gReport.hasSsuRRna() ? "Yes" : "No"));
             genomeStream.format("*\tGenome Rating\t%s\t%n", (gReport.isGood() ? "Good" : "Poor"));
         }
     }
@@ -85,9 +87,10 @@ public class EvalTextReporter extends EvalReporter {
         int contigs = gReport.getContigCount();
         double score = gReport.getScore();
         String goodSeed = (gReport.isGoodSeed() ? "Y" : "");
+        String goodSSU = (gReport.hasSsuRRna() ? "Y" : "");
         String goodGenome = (gReport.isGood() ? "Y" : "");
         this.summaryStream.format(SUMMARY_FORMAT,
-                genome, gName, coarsePct, finePct, completePct, contamPct, hypoPct, contigs, goodSeed, score, goodGenome);
+                genome, gName, coarsePct, finePct, completePct, contamPct, hypoPct, contigs, goodSeed, goodSSU, score, goodGenome);
     }
 
     @Override
@@ -96,7 +99,7 @@ public class EvalTextReporter extends EvalReporter {
         this.summaryStream.println();
         this.summaryStream.format(END_FORMAT, "Total", "Good in each Category", "", this.getConsistentCount(),
                 this.getCompleteCount(), this.getCleanCount(), this.getUnderstoodCount(), "",
-                this.getGoodSeedCount(), this.getGenomeCount(), this.getGoodCount());
+                this.getGoodSeedCount(), this.getSsuFoundCount(), this.getGenomeCount(), this.getGoodCount());
     }
 
     @Override

@@ -101,7 +101,7 @@ public class P3AllProcessor extends BaseProcessor {
                 log.info("Skipping {}. {} ({}):  already in output directory.", processed, genomeId, name);
             else {
                 log.info("Processing {}. {} ({}).", processed, genomeId, name);
-                P3Genome genome = P3Genome.Load(p3, genomeId, P3Genome.Details.STRUCTURE_ONLY);
+                P3Genome genome = P3Genome.load(p3, genomeId, P3Genome.Details.STRUCTURE_ONLY);
                 this.gOutDir.add(genome);
                 downloaded++;
             }

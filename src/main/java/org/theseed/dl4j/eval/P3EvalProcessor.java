@@ -125,7 +125,7 @@ public class P3EvalProcessor extends Evaluator {
             }
             // Add this genome to the data structures.  If it's not found, that's a warning.
             String genomeId = line.get(this.colIdx);
-            P3Genome genome = P3Genome.Load(p3, genomeId, this.getDetailLevel());
+            P3Genome genome = P3Genome.load(p3, genomeId, this.getDetailLevel());
             if (genome == null) {
                 log.debug("Could not find genome {} -- skipped.", genomeId);
             } else {

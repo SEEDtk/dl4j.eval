@@ -79,6 +79,8 @@ public class GenomeStats {
     private int seedCount;
     /** longest seed protein found */
     private String seedProt;
+    /** TRUE if an SSU rRNA was found */
+    private boolean hasSsuRRna;
 
     /**
      * This object describes the statistics of a problematic role.
@@ -255,6 +257,7 @@ public class GenomeStats {
         this.seedProt = "";
         this.l50 = 0;
         this.n50 = 0;
+        this.hasSsuRRna = false;
     }
 
     /**
@@ -518,6 +521,22 @@ public class GenomeStats {
     }
 
     /**
+     * Specify whether the genome has an SSU rRNA.
+     *
+     * @param flag	TRUE if the SSU rRNA was found
+     */
+    public void setHasSsuRRna(boolean flag) {
+        this.hasSsuRRna = flag;
+    }
+
+    /**
+     * @return TRUE if the genome has an SSU rRNA
+     */
+    public boolean hasSsuRRna() {
+        return this.hasSsuRRna;
+    }
+
+    /**
      * @return the contig L50 metric
      */
     public int getL50() {
@@ -632,6 +651,7 @@ public class GenomeStats {
         quality.put("cds_ratio", this.getCdsPercent());
         quality.put("fine_consistency", this.getFinePercent());
         quality.put("completeness_group", this.getGroup());
+        quality.put("hasSsuRRna", this.hasSsuRRna());
         // Store the version string.
         quality.put("eval_version", version);
         // Genome metrics is a hash.
@@ -681,7 +701,7 @@ public class GenomeStats {
      * @return TRUE if this genome is good, else FALSE
      */
     public boolean isGood() {
-        return isClean() && isUnderstood() && isComplete() && isConsistent() && isGoodSeed();
+        return isClean() && isUnderstood() && isComplete() && isConsistent() && isGoodSeed() && hasSsuRRna();
     }
 
     /**

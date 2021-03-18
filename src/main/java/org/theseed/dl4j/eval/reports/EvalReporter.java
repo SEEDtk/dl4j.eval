@@ -43,6 +43,8 @@ public abstract class EvalReporter implements AutoCloseable {
     private int understoodCount;
     /** number of good seeds */
     private int goodSeedCount;
+    /** number of SSU rRNAs found */
+    private int ssuFoundCount;
     /** number of good genomes */
     private int goodCount;
     /** total number of genomes */
@@ -157,6 +159,7 @@ public abstract class EvalReporter implements AutoCloseable {
         this.goodCount = 0;
         this.goodSeedCount = 0;
         this.understoodCount = 0;
+        this.ssuFoundCount = 0;
         // Start the summary report.
         if (this.summary)
             startSummary();
@@ -220,6 +223,7 @@ public abstract class EvalReporter implements AutoCloseable {
         if (gReport.isConsistent()) this.consistentCount++;
         if (gReport.isGoodSeed()) this.goodSeedCount++;
         if (gReport.isUnderstood()) this.understoodCount++;
+        if (gReport.hasSsuRRna()) this.ssuFoundCount++;
         // Write this genome's data on the summary report.
         if (this.summary)
             writeSummary(gReport);
@@ -310,6 +314,13 @@ public abstract class EvalReporter implements AutoCloseable {
      */
     protected int getUnderstoodCount() {
         return understoodCount;
+    }
+
+    /**
+     * @return the number of SSU rRNAs found
+     */
+    protected int getSsuFoundCount() {
+        return ssuFoundCount;
     }
 
     /**

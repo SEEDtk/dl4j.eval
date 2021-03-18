@@ -108,6 +108,7 @@ public class EvalHtmlReporter extends EvalReporter {
                 .with(th("Base Pairs").withClass("num"))
                 .with(th("Hypothetical %").withClass("num"))
                 .with(th("Good Phes").withClass("flag"))
+                .with(th("SSU rRNA").withClass("flag"))
                 .with(th("Quality").withClass("flag"));
         this.goodRows.put(EvalSorter.HEADER, headerRow);
         this.badRows.put(EvalSorter.HEADER, headerRow);
@@ -121,6 +122,7 @@ public class EvalHtmlReporter extends EvalReporter {
         // Determine if we're good or poor and get the genome name.
         String rating = (gReport.isGood() ? "good" : "poor");
         String seedRating = (gReport.isGoodSeed() ? "good" : "missing or invalid");
+        String ssuRating = (gReport.hasSsuRRna() ? "known" : "unknown");
         String gName = gReport.getName();
         // Perform any special genome initialization.
         this.advancedGenomeSetup(gReport);
@@ -172,8 +174,8 @@ public class EvalHtmlReporter extends EvalReporter {
         String page = Html.page(gName + " Evaluation Report",
                     h1("Evaluation Report for " + genomeId),
                     p(String.format("This genome has an overall score of %4.2f using evaluator version %s and is of %s quality." +
-                            "The PheS protein is %s.",
-                            gReport.getScore(), this.getVersion(), rating, seedRating)),
+                            "The PheS protein is %s.  The SSU rRNA sequence is %s.",
+                            gReport.getScore(), this.getVersion(), rating, seedRating, ssuRating)),
                     div(table().with(detailRows.stream()).withClass(Html.TABLE_CLASS)).withClass("shrinker"),
                     extraHtml,
                     Html.formatTable("Potentially Problematic Roles", roleRows)
@@ -391,6 +393,7 @@ public class EvalHtmlReporter extends EvalReporter {
             .with(Html.numCell(gReport.getDnaSize()))
             .with(Html.colorCell(gReport.isUnderstood(), gReport.getHypotheticalPercent()))
             .with(Html.flagCell(gReport.isGoodSeed(), "Y", ""))
+            .with(Html.flagCell(gReport.hasSsuRRna(), "Y", ""))
             .with(Html.flagCell(gReport.isGood(), "Good", "Poor"));
         if (gReport.isGood())
             this.goodRows.put(new EvalSorter(gReport), detailRow);
@@ -444,6 +447,10 @@ public class EvalHtmlReporter extends EvalReporter {
         int bad = this.getGenomeCount() - this.getGoodSeedCount();
         if (bad > 0) {
             notes.add(li(String.format("%d genomes have a missing or improper PheS protein", bad)));
+        }
+        bad = this.getGenomeCount() - this.getSsuFoundCount();
+        if (bad > 0) {
+            notes.add(li(String.format("%d genomes had an unknown SSU rRNA sequence", bad)));
         }
         DomContent retVal;
         if (notes.size() == 0) {

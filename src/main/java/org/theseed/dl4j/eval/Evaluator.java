@@ -317,6 +317,8 @@ public abstract class Evaluator extends BaseProcessor implements IConsistencyChe
                 gReport.completeRole(uniRole, roleCounts.getCount(uniRole));
             }
         }
+        // Store the SSU rRNA flag.
+        gReport.setHasSsuRRna(! genome.getSsuRRna().isEmpty());
         // Store the rolesActual counts.
         for (int i = 0; i < this.roles.size(); i++) {
             this.rolesActual[iGenome][i] = roleCounts.getCount(this.roles.get(i));
@@ -516,8 +518,11 @@ public abstract class Evaluator extends BaseProcessor implements IConsistencyChe
 
     /**
      * Validate the subclass parameters.
+     *
+     * @throws IOException
+     * @throws ParseFailureException
      */
-    public abstract void validateEvalParms() throws IOException;
+    public abstract void validateEvalParms() throws IOException, ParseFailureException;
 
     /**
      * @return the directory of role models

@@ -12,18 +12,20 @@ import java.security.NoSuchAlgorithmException;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.theseed.genome.Genome;
-import org.theseed.genome.GenomeDirectory;
+import org.theseed.genome.iterator.GenomeSource;
+import org.theseed.utils.ParseFailureException;
 
 
 /**
  * This processor performs the evaluations on GTO files.  It will take as input an evaluation directory and an input directory of
- * GTO files.  The GTO files do not need to be fully-loaded.  Only the features and the genome ID are needed.  In addition,
- * the protein translation must be present for the seed protein.  Representative-genome technology will be used for
- * completeness checking, and only the length and ID is necessary for each contig.
+ * GTO files.  The GTO files do not need to be fully-loaded.  Only the structural information is needed.  In addition,
+ * the protein translation must be present for the seed protein and the SSU rRNA must be filled in.  Representative-genome
+ * technology will be used for completeness checking, and only the length and ID is necessary for each contig.
  *
  * The positional parameters are the name of the evaluation directory and the name of the input directory.
  *
- * The input directory should contain a GTO file for each genome to evaluate.
+ * The input can be a file containing PATRIC genome IDs, a genome master directory, or a directory containing plain-text
+ * GTOs.  The --source parameter determines which type of input is expected.
  *
  * When we are done, the output directory will contain a report file for each genome (named using the genome
  * ID) and a summary report (named "summary").  The file type depends on the type of reporting requested.
@@ -41,11 +43,16 @@ import org.theseed.genome.GenomeDirectory;
  * --format		specify the output format-- HTML, DEEP, or TEXT
  * --ref		name of a reference genome file to use for the deep-format reports
  * --clear		clear the output directory before processing
+ * --source		type of input (PATRIC, DIR, MASTER)
  *
  * @author Bruce Parrello
  *
  */
 public class EvalProcessor extends Evaluator  {
+
+    // FIELDS
+    /** genome source iterator */
+    private GenomeSource genomeDir;
 
     // COMMAND LINE
 
@@ -73,12 +80,19 @@ public class EvalProcessor extends Evaluator  {
     @Option(name = "-b", aliases = { "--batch", "--batchSize" }, metaVar = "100", usage = "number of genomes to process in each batch")
     private int batchSize;
 
+    /** type of input */
+    @Option(name = "--source", usage = "type of genome input")
+    private GenomeSource.Type inType;
+
     @Override
-    public void validateEvalParms() throws IOException {
+    public void validateEvalParms() throws IOException, ParseFailureException {
         // Check the input directory.
         if (! this.inDir.isDirectory()) {
             throw new FileNotFoundException("Input " + this.inDir + " is neither a directory or a readable file.");
         }
+        // Set up the input stream.
+        log.info("Genomes will be read from {} source {}.", this.inType, this.inDir);
+        this.genomeDir = this.inType.create(this.inDir);
         // Set up the output directory.
         this.validateOutputDir(this.outputDir, this.clearOutputDir);
     }
@@ -89,6 +103,7 @@ public class EvalProcessor extends Evaluator  {
         this.refGenomeFile = null;
         this.outputDir = new File(System.getProperty("user.dir"));
         this.batchSize = 200;
+        this.inType = GenomeSource.Type.DIR;
     }
 
     @Override
@@ -97,8 +112,6 @@ public class EvalProcessor extends Evaluator  {
         this.setupRefGenomeEngine(this.refGenomeFile);
         // Read in the role maps.
         initializeData();
-        log.info("Genomes will be read from {}.", this.inDir);
-        GenomeDirectory genomeDir = new GenomeDirectory(this.inDir);
         // Allocate our arrays.
         this.allocateArrays(this.batchSize);
         // Loop through the genomes.  Note we track the genome's index in genomeStats;
