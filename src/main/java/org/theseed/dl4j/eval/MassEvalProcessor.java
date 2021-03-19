@@ -200,6 +200,7 @@ public class MassEvalProcessor extends BaseEvaluator {
         // Set up the input stream.
         log.info("Genomes will be read from {} source {}.", this.inType, this.inDir);
         this.master = this.inType.create(this.inDir);
+        this.master.setDetailLevel(this.getDetailLevel());
     }
 
 }
