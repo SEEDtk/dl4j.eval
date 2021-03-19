@@ -86,10 +86,6 @@ public class EvalProcessor extends Evaluator  {
 
     @Override
     public void validateEvalParms() throws IOException, ParseFailureException {
-        // Check the input directory.
-        if (! this.inDir.isDirectory()) {
-            throw new FileNotFoundException("Input " + this.inDir + " is neither a directory or a readable file.");
-        }
         // Set up the input stream.
         log.info("Genomes will be read from {} source {}.", this.inType, this.inDir);
         this.genomeDir = this.inType.create(this.inDir);

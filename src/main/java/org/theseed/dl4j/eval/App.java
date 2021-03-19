@@ -18,6 +18,7 @@ import org.theseed.utils.BaseProcessor;
  * roles	produce predictable-role report
  * p3All	create a master directory of evaluation GTOs for PATRIC prokaryotes
  * comp3	produce completeness engine from master directory
+ * mass		produce a summary evaluation report on a group of genomes
  *
  */
 public class App
@@ -62,6 +63,9 @@ public class App
             break;
         case "comp" :
             processor = new CompletenessRolesProcessor();
+            break;
+        case "mass" :
+            processor = new MassEvalProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
