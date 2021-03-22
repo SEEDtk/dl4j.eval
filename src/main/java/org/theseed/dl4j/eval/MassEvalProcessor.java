@@ -59,7 +59,7 @@ public class MassEvalProcessor extends BaseEvaluator {
     /** TRUE if we have completeness data */
     private boolean haveCompleteness;
     /** list of column headers (NOTE that the columns relating to completeness are at the end so they can be easily removed.) */
-    private static final String[] DEFAULT_HEADERS = new String[] { "Genome", "Name", "Score", "Good", "Good Seed",
+    private static final String[] DEFAULT_HEADERS = new String[] { "Genome", "Name", "Score", "Good", "Taxonomy", "Good Seed",
             "Ssu_rRNA", "Contigs", "Hypothetical", "Coarse", "Fine", "Completeness", "Contamination", "Group" };
     /** number of completeness-related columns */
     private static final int COMPLETENESS_COLUMNS = 3;
@@ -158,12 +158,16 @@ public class MassEvalProcessor extends BaseEvaluator {
         // Write the results.
         for (int i = 0; i < this.getGenomeCount(); i++) {
             GenomeStats gReport = this.getGReport(i);
+            // Get the taxonomic lineage.
+            Genome genome = gReport.getGenome();
+            String taxIds = StringUtils.join(genome.getLineage(), "::");
             // Build the output line.
             List<String> output = new ArrayList<String>(DEFAULT_HEADERS.length);
             output.add(gReport.getId());
             output.add(gReport.getName());
             output.add(String.format("%8.2f", gReport.getScore()));
             output.add(gReport.isGood() ? "Y" : "");
+            output.add(taxIds);
             output.add(gReport.isGoodSeed() ? "Y" : "");
             output.add(gReport.hasSsuRRna() ? "Y" : "");
             output.add(Integer.toString(gReport.getContigCount()));
