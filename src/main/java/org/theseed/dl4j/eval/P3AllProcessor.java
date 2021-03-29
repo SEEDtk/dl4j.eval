@@ -7,7 +7,10 @@ import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -64,6 +67,29 @@ public class P3AllProcessor extends BaseProcessor {
     @Argument(index = 0, metaVar = "outDir", usage = "output directory name")
     private File outDir;
 
+    /**
+     * This class sorts genome records by ID, putting records already in the database first.
+     */
+    private class GenomeSorter implements Comparator<JsonObject> {
+
+        @Override
+        public int compare(JsonObject o1, JsonObject o2) {
+            int retVal = 0;
+            String k1 = Connection.getString(o1, "genome_id");
+            String k2 = Connection.getString(o2, "genome_id");
+            boolean b1 = P3AllProcessor.this.gOutDir.contains(k1);
+            boolean b2 = P3AllProcessor.this.gOutDir.contains(k2);
+            if (b1 == b2)
+                retVal = k1.compareTo(k2);
+            else if (b1)
+                retVal = -1;
+            else
+                retVal = 1;
+            return retVal;
+        }
+
+    }
+
     @Override
     protected void setDefaults() {
         this.clearFlag = false;
@@ -87,9 +113,10 @@ public class P3AllProcessor extends BaseProcessor {
         // Connect to PATRIC.
         this.p3 = new Connection();
         // Get a list of the public, prokaryotic genomes.
-        List<JsonObject> genomes = this.p3.getRecords(Table.GENOME, "kingdom", DOMAINS, "genome_id,genome_name", Criterion.EQ("public", "1"));
+        SortedSet<JsonObject> genomes = new TreeSet<JsonObject>(this.new GenomeSorter());
+        genomes.addAll(this.p3.getRecords(Table.GENOME, "kingdom", DOMAINS, "genome_id,genome_name", Criterion.EQ("public", "1")));
         log.info("{} genomes found in PATRIC.  {} already in output directory.", genomes.size(), this.gOutDir.size());
-        // Loop through the genomes.
+        // Loop through the genomes, removing the ones already processed.
         int processed = 0;
         int downloaded = 0;
         long start = System.currentTimeMillis();
@@ -102,13 +129,17 @@ public class P3AllProcessor extends BaseProcessor {
             else {
                 log.info("Processing {}. {} ({}).", processed, genomeId, name);
                 P3Genome genome = P3Genome.load(p3, genomeId, P3Genome.Details.STRUCTURE_ONLY);
-                this.gOutDir.add(genome);
-                downloaded++;
-            }
-            if (downloaded > 0) {
-                Duration duration = Duration.ofMillis(System.currentTimeMillis() - start);
-                log.info("{} of {} genomes processed, {} per genome downloaded.", processed, genomes.size(),
-                        duration.dividedBy(downloaded));
+                if (genome == null)
+                    log.warn("WARNING: genome {} not found in PATRIC.", genomeId);
+                else {
+                    this.gOutDir.add(genome);
+                    downloaded++;
+                }
+                if (downloaded > 0) {
+                    Duration duration = Duration.ofMillis(System.currentTimeMillis() - start);
+                    log.info("{} of {} genomes processed, {} per genome downloaded.", processed, genomes.size(),
+                             duration.dividedBy(downloaded));
+                }
             }
         }
     }
