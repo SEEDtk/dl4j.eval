@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -160,7 +161,8 @@ public class MassEvalProcessor extends BaseEvaluator {
             GenomeStats gReport = this.getGReport(i);
             // Get the taxonomic lineage.
             Genome genome = gReport.getGenome();
-            String taxIds = StringUtils.join(genome.getLineage(), "::");
+            String taxIds = Arrays.stream(genome.getLineage()).mapToObj(n -> Integer.toString(n))
+                    .collect(Collectors.joining("::"));
             // Build the output line.
             List<String> output = new ArrayList<String>(DEFAULT_HEADERS.length);
             output.add(gReport.getId());
