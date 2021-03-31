@@ -6,9 +6,7 @@ package org.theseed.dl4j.eval;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -18,8 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.genome.GenomeMultiDirectory;
 import org.theseed.p3api.Connection;
-import org.theseed.p3api.Connection.Table;
-import org.theseed.p3api.Criterion;
 import org.theseed.p3api.P3Genome;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -54,8 +50,6 @@ public class P3AllProcessor extends BaseProcessor {
     private GenomeMultiDirectory gOutDir;
     /** connection to PATRIC */
     private Connection p3;
-    /** list of domains to use */
-    private static final List<String> DOMAINS = Arrays.asList("Bacteria", "Archaea");
 
     // COMMAND-LINE OPTIONS
 
@@ -114,7 +108,7 @@ public class P3AllProcessor extends BaseProcessor {
         this.p3 = new Connection();
         // Get a list of the public, prokaryotic genomes.
         SortedSet<JsonObject> genomes = new TreeSet<JsonObject>(this.new GenomeSorter());
-        genomes.addAll(this.p3.getRecords(Table.GENOME, "kingdom", DOMAINS, "genome_id,genome_name", Criterion.EQ("public", "1")));
+        this.p3.addAllProkaryotes(genomes);
         log.info("{} genomes found in PATRIC.  {} already in output directory.", genomes.size(), this.gOutDir.size());
         // Loop through the genomes, removing the ones already processed.
         int processed = 0;
