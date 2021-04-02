@@ -19,6 +19,7 @@ import org.theseed.utils.BaseProcessor;
  * p3All	create a master directory of evaluation GTOs for PATRIC prokaryotes
  * comp3	produce completeness engine from master directory
  * mass		produce a summary evaluation report on a group of genomes
+ * univ		create a report on the singly-occurring roles in a group of genomes
  *
  */
 public class App
@@ -66,6 +67,9 @@ public class App
             break;
         case "mass" :
             processor = new MassEvalProcessor();
+            break;
+        case "univ" :
+            processor = new UniRoleProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");

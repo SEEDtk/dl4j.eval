@@ -78,7 +78,7 @@ public class MassEvalProcessor extends BaseEvaluator {
     private GenomeSource.Type inType;
 
     /** input genome source */
-    @Argument(index = 1, metaVar = "inDir", usage = "input genome file or directory")
+    @Argument(index = 1, metaVar = "inDir", usage = "input genome file or directory", required = true)
     private File inDir;
 
     @Override
