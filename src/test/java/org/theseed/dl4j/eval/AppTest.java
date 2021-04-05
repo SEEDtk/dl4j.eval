@@ -93,7 +93,7 @@ public class AppTest extends TestCase
         assertThat(testGenome.getCoarsePercent(), closeTo(63.64, 0.005));
         assertFalse(testGenome.isConsistent());
         testGenome.consistentRole("RoleL", 2, 2);
-        for (int i = 0; i < 34; i++) {
+        for (int i = 0; i < 27; i++) {
             String rName = "Role" + Integer.toString(i);
             testGenome.consistentRole(rName, 1, 1);
             testGenome.completeRole(rName, 1);

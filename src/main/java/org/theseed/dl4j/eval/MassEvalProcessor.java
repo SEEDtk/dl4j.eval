@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -40,6 +41,7 @@ import org.theseed.utils.ParseFailureException;
  *
  * -h	display command-line usage
  * -v	show more detailed log messages
+ * -b	batch size (default 100)
  *
  * --resume		if specified, the name of a previous run's output file; it will be assumed the run was interrupted
  * 				and it will be continued with the
@@ -60,15 +62,34 @@ public class MassEvalProcessor extends BaseEvaluator {
     /** TRUE if we have completeness data */
     private boolean haveCompleteness;
     /** list of column headers (NOTE that the columns relating to completeness are at the end so they can be easily removed.) */
-    private static final String[] DEFAULT_HEADERS = new String[] { "Genome", "Name", "Score", "Good", "Taxonomy", "Good Seed",
+    public static final String[] DEFAULT_HEADERS = new String[] { "Genome", "Name", "Score", "Good", "Taxonomy", "Good Seed",
             "Ssu_rRNA", "Contigs", "Hypothetical", "Coarse", "Fine", "Completeness", "Contamination", "Group" };
     /** number of completeness-related columns */
     private static final int COMPLETENESS_COLUMNS = 3;
-    /** genome batch size */
-    private static final int BATCH_SIZE = 200;
+    /** index of the genome ID column */
+    public static final int GENOME_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Genome");
+    /** index of the score column */
+    public static final int SCORE_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Score");
+    /** index of the good/bad column */
+    public static final int GOOD_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Good");
+    /** index of the SSU-present column */
+    public static final int SSU_RNA_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Ssu_rRNA");
+    /** index of the fine-consistency column */
+    public static final int FINE_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Fine");
+    /** index of the hypothetical-percent column */
+    public static final int HYPO_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Hypothetical");
+    /** index of the completeness-percent column */
+    public static final int COMPLETE_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Completeness");
+    /** index of the contamination-percent column */
+    public static final int CONTAM_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Contamination");
+    /** index of the good-seed column */
+    public static final int SEED_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Good Seed");
 
     // COMMAND-LINE OPTIONS
 
+    /** number of genomes per batch */
+    @Option(name = "--batch", aliases = { "-b", "--batchSize" }, metaVar = "100", usage = "number of genomes to process at once")
+    private int batchSize;
     /** old output file if we are resuming */
     @Option(name = "--resume", metaVar = "output.log", usage = "if we are resuming, the output file from the interrupted run")
     private File resumeFile;
@@ -85,6 +106,7 @@ public class MassEvalProcessor extends BaseEvaluator {
     protected void setDefaults() {
         this.inType = GenomeSource.Type.MASTER;
         this.haveCompleteness = false;
+        this.batchSize = 100;
     }
 
     /**
@@ -108,7 +130,7 @@ public class MassEvalProcessor extends BaseEvaluator {
             // Resume processing.  Save the roles we've already seen.
             try (TabbedLineReader reader = new TabbedLineReader(this.resumeFile)) {
                 int idColIdx = reader.findField("Genome");
-                Set<String> processedItems = new HashSet<String>(BATCH_SIZE);
+                Set<String> processedItems = new HashSet<String>(this.batchSize);
                 for (TabbedLineReader.Line line : reader) {
                     processedItems.add(line.get(idColIdx));
                 }
@@ -128,12 +150,12 @@ public class MassEvalProcessor extends BaseEvaluator {
         // Set up the input.
         this.setup();
         // Allocate our arrays.
-        this.allocateArrays(BATCH_SIZE);
+        this.allocateArrays(this.batchSize);
         // Loop through the genomes.  Note we track the genome's index in genomeStats;
         int iGenome = 0;
         for (Genome genome : master) {
             // Insure there is room for this genome.
-            if (iGenome >= BATCH_SIZE) {
+            if (iGenome >= this.batchSize) {
                 processBatch();
                 iGenome = 0;
             }
@@ -173,7 +195,7 @@ public class MassEvalProcessor extends BaseEvaluator {
             output.add(gReport.isGoodSeed() ? "Y" : "");
             output.add(gReport.hasSsuRRna() ? "Y" : "");
             output.add(Integer.toString(gReport.getContigCount()));
-            output.add(Integer.toString(gReport.getHypoCount()));
+            output.add(String.format("%6.2f", gReport.getHypotheticalPercent()));
             output.add(String.format("%6.2f", gReport.getCoarsePercent()));
             output.add(String.format("%6.2f", gReport.getFinePercent()));
             if (this.haveCompleteness) {

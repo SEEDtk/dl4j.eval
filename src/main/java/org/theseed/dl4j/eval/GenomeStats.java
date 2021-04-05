@@ -36,7 +36,6 @@ import com.github.cliftonlabs.json_simple.JsonObject;
 public class GenomeStats {
 
     // FIELDS
-
     /** source genome */
     private Genome genome;
     /** completeness group */
@@ -392,13 +391,15 @@ public class GenomeStats {
      *
      * @return the index of the contig length at the split point
      */
-    private int findSplitPoint(int[] lengths, int ratio) {
-        int retVal;
+    public static int findSplitPoint(int[] lengths, int ratio) {
         // Compute the split point, rounding up.
-        int remaining = (this.dnaSize * ratio + 99) / 100;
-        retVal = lengths.length - 1;
-        for (retVal = lengths.length - 1; remaining > 0; retVal--)
+        long total = Arrays.stream(lengths).sum();
+        long remaining = (total * ratio + 99) / 100;
+        int retVal = lengths.length - 1;
+        while (remaining > 0) {
             remaining -= lengths[retVal];
+            retVal--;
+        }
         // Get back the correct array index for the split point.
         retVal++;
         return retVal;
@@ -691,13 +692,6 @@ public class GenomeStats {
     }
 
     /**
-     * @return TRUE if this genome is clean, else FALSE
-     */
-    public boolean isClean() {
-        return (getContaminationPercent() < 10.0);
-    }
-
-    /**
      * @return TRUE if this genome is good, else FALSE
      */
     public boolean isGood() {
@@ -705,24 +699,67 @@ public class GenomeStats {
     }
 
     /**
+     * @return TRUE if this genome is clean, else FALSE
+     */
+    public boolean isClean() {
+        return indicatesClean(this.getContaminationPercent());
+    }
+
+    /**
+     * @return TRUE if the specified contamination percent indicates a clean genome
+     *
+     * @param contam	contamination percent
+     */
+    public static boolean indicatesClean(double contam) {
+        return (contam < 10.0);
+    }
+
+    /**
      * @return TRUE if this genome is consistently annotated, else FALSE
      */
     public boolean isConsistent() {
-        return (getFinePercent() >= 85.0);
+        return indicatesConsistent(this.getFinePercent());
+    }
+
+    /**
+     * @return TRUE if this fine consistency indicates a genome is consistently annotated, else FALSE
+     *
+     * @param fine	fine consistency percent
+     */
+    public static boolean indicatesConsistent(double fine) {
+        return (fine >= 85.0);
     }
 
     /**
      * @return TRUE if this genome is mostly complete, else FALSE
      */
     public boolean isComplete() {
-        return (getCompletePercent() >= 80.0);
+        return indicatesComplete(this.getCompletePercent());
+    }
+
+    /**
+     * @return TRUE if the completeness percent indicates a complete genome
+     *
+     * @param comp	completeness percent
+     */
+    public static boolean indicatesComplete(double comp) {
+        return (comp >= 80.0);
     }
 
     /**
      * @return TRUE if this genome's proteins are understood, else FALSE
      */
     public boolean isUnderstood() {
-        return (getHypotheticalPercent() <= 70.0);
+        return indicatesUnderstood(getHypotheticalPercent());
+    }
+
+    /**
+     * @return TRUE if the percent hypothetical protein percent indicates the genome is understood
+     *
+     * @param hypo	percent of proteins that are hypothetical
+     */
+    public static boolean indicatesUnderstood(double hypo) {
+        return (hypo <= 70.0);
     }
 
     /**

@@ -20,6 +20,7 @@ import org.theseed.utils.BaseProcessor;
  * comp3	produce completeness engine from master directory
  * mass		produce a summary evaluation report on a group of genomes
  * univ		create a report on the singly-occurring roles in a group of genomes
+ * sort		sort the summary evaluation report
  *
  */
 public class App
@@ -70,6 +71,9 @@ public class App
             break;
         case "univ" :
             processor = new UniRoleProcessor();
+            break;
+        case "sort" :
+            processor = new EvalSortProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
