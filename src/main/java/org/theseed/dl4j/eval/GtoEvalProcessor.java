@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.kohsuke.args4j.Option;
+import org.theseed.dl4j.eval.reports.EvalReporter;
 import org.theseed.dl4j.eval.reports.IRefReporter;
 import org.theseed.dl4j.eval.reports.SingleRefGenomeComputer;
 import org.theseed.genome.Genome;
@@ -73,8 +74,10 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         }
         // Set up the output directory.
         this.validateOutputDir(this.outputDir, this.clearOutputDir);
-        // Suppress the summary report.
-        this.suppressSummary();
+        // Set the reporting options for single-genome output.
+        EvalReporter reporter = this.getReporter();
+        reporter.setOption(EvalReporter.Option.NOSUMMARY);
+        reporter.setOption(EvalReporter.Option.P3REPORT);
     }
 
     public void setDefaults() {

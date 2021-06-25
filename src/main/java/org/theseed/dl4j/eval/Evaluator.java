@@ -153,13 +153,6 @@ public abstract class Evaluator extends BaseEvaluator implements IConsistencyChe
         log.info("Output will be in directory {}.", this.outDir);
     }
 
-    /**'
-     * Turn off the summary report.
-     */
-    public void suppressSummary() {
-        this.getReporter().setOption(EvalReporter.Option.NOSUMMARY);
-    }
-
     /**
      * Inform the reporting object of whether or not we have completeness data.
      *

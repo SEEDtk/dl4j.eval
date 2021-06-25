@@ -29,6 +29,8 @@ public abstract class EvalReporter implements AutoCloseable {
     private File outDir;
     /** TRUE to output summary */
     private boolean summary;
+    /** if specified, the name of the output HTML file */
+    private String htmlFileName;
     /** TRUE to output details */
     private boolean details;
     /** current version of the evaluation database */
@@ -75,7 +77,9 @@ public abstract class EvalReporter implements AutoCloseable {
         /** suppress summary report */
         NOSUMMARY,
         /** suppress detail reports */
-        NODETAILS
+        NODETAILS,
+        /** PATRIC genome report output file */
+        P3REPORT
     }
 
     /**
@@ -89,6 +93,7 @@ public abstract class EvalReporter implements AutoCloseable {
         this.details = true;
         this.version = null;
         this.haveCompleteness = false;
+        this.htmlFileName = null;
     }
 
     /**
@@ -132,6 +137,11 @@ public abstract class EvalReporter implements AutoCloseable {
             break;
         case NODETAILS:
             this.details = false;
+            break;
+        case P3REPORT:
+            this.htmlFileName = "GenomeReport.html";
+            break;
+        default:
             break;
         }
     }
@@ -356,7 +366,12 @@ public abstract class EvalReporter implements AutoCloseable {
      * @param genomeId	ID of the genome of interest
      */
     protected File htmlFile(String genomeId) {
-        return new File(this.getOutDir(), genomeId + ".html");
+        String fName;
+        if (this.htmlFileName != null)
+            fName = this.htmlFileName;
+        else
+            fName = genomeId + ".html";
+        return new File(this.getOutDir(), fName);
     }
 
 
