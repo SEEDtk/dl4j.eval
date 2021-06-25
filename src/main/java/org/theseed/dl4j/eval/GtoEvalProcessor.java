@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.kohsuke.args4j.Option;
+import org.theseed.dl4j.eval.reports.IRefReporter;
+import org.theseed.dl4j.eval.reports.SingleRefGenomeComputer;
 import org.theseed.genome.Genome;
 import org.theseed.utils.ICommand;
 
@@ -33,8 +35,7 @@ import org.theseed.utils.ICommand;
  * --terse		do not write the individual output files, only the summary
  * --clear		clear the output directory before processing
  * --format		specify the output format-- HTML, DEEP, or TEXT
- * --ref		name of a tab-delimited file containing GTOs to use as reference genomes; the taxonomic ID
- * 				should be in the first column and a GTO file name in the second
+ * --ref		ID of a PATRIC genome to be used as the reference in a DEEP report
  *
  * @author Bruce Parrello
  *
@@ -60,8 +61,8 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
     private boolean clearOutputDir;
 
     /** file of reference genome GTO mappings */
-    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
-    private File refGenomeFile;
+    @Option(name = "--ref", usage = "ID of reference genome to use for a DEEP report")
+    private String refGenomeID;
 
 
     @Override
@@ -76,20 +77,21 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         this.suppressSummary();
     }
 
-    /**
-     *
-     */
     public void setDefaults() {
         this.inFile = null;
         this.outFile = null;
         this.outputDir = new File(System.getProperty("user.dir"));
-        this.refGenomeFile = null;
+        this.refGenomeID = null;
     }
 
     @Override
     public void runCommand() throws Exception {
         // Set up the reference-genome engine (if necessary).
-        this.setupRefGenomeEngine(this.refGenomeFile);
+        if (this.getReporter() instanceof IRefReporter) {
+            IRefReporter refReporter = (IRefReporter) this.getReporter();
+            if (refGenomeID != null)
+                refReporter.setEngine(new SingleRefGenomeComputer(refGenomeID));
+        }
         // Read in the role maps.
         initializeData();
         // Read in the genome.
