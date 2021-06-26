@@ -15,7 +15,6 @@
             </manifest>
             <fileset dir="${dir.buildfile}/target/classes"/>
             <fileset dir="${dir.workspace}/git/shared/target/classes"/>
-            <fileset dir="${dir.workspace}/git/shared/target/test-classes"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-lang3/3.9/commons-lang3-3.9.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/com/github/eprst/murmur3/0.3/murmur3-0.3.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/junit/junit/4.13.1/junit-4.13.1.jar"/>
