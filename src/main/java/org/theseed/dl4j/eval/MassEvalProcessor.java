@@ -44,7 +44,7 @@ import org.theseed.utils.ParseFailureException;
  * -b	batch size (default 100)
  *
  * --resume		if specified, the name of a previous run's output file; it will be assumed the run was interrupted
- * 				and it will be continued with the
+ * 				and it will be continued with the next genome not yet processed
  * --source		type of input-- master genome directory, GTO directory, or file of PATRIC genome IDs
  *
  * @author Bruce Parrello
@@ -90,12 +90,13 @@ public class MassEvalProcessor extends BaseEvaluator {
     /** number of genomes per batch */
     @Option(name = "--batch", aliases = { "-b", "--batchSize" }, metaVar = "100", usage = "number of genomes to process at once")
     private int batchSize;
+
     /** old output file if we are resuming */
     @Option(name = "--resume", metaVar = "output.log", usage = "if we are resuming, the output file from the interrupted run")
     private File resumeFile;
 
     /** type of genome source */
-    @Option(name = "--source", usage = "type of genome input (master genome directory, GTO directory, patric ID file)")
+    @Option(name = "--source", aliases = { "-t", "--type" }, usage = "type of genome input (master genome directory, GTO directory, patric ID file)")
     private GenomeSource.Type inType;
 
     /** input genome source */
