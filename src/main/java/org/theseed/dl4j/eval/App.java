@@ -15,7 +15,6 @@ import org.theseed.utils.BaseProcessor;
  * bins		evaluate binning results
  * build	build a genome consistency evaluator from training data
  * analyze	analyze significant contributions among input features
- * roles	produce predictable-role report
  * p3All	create a master directory of evaluation GTOs for PATRIC prokaryotes
  * comp3	produce completeness engine from master directory
  * mass		produce a summary evaluation report on a group of genomes
@@ -55,9 +54,6 @@ public class App
             break;
         case "build" :
             processor = new BuildProcessor();
-            break;
-        case "roles" :
-            processor = new RolesProcessor();
             break;
         case "p3All" :
             processor = new P3AllProcessor();

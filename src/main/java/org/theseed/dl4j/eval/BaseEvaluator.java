@@ -71,6 +71,8 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
     private int gCount;
     /** directory of consistency role models */
     private File roleDir;
+    /** array of consistency role models */
+    private RandomForest[] models;
 
     // COMMAND LINE OPTIONS
 
@@ -159,6 +161,20 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
         log.info("Reading consistency roles from {}.", rolesToUseFile);
         this.roles = readRolesToUse(rolesToUseFile);
         log.info("{} roles will be used for consistency check.", this.roles.size());
+        // Create the role model array.
+        this.models = new RandomForest[this.roles.size()];
+        int rCount = 0;
+        for (int i = 0; i < this.models.length; i++) {
+            String role = this.roles.get(i);
+            File modelFile = new File(this.roleDir, role + ".ser");
+            if (! modelFile.exists())
+                this.models[i] = null;
+            else {
+                this.models[i] = RandomForest.load(modelFile);
+                rCount++;
+            }
+        }
+        log.info("{} consistency models read from {}.", rCount, this.roleDir);
         // Read in the role definition file.
         File roleDefineFile = new File(this.modelDir, "roles.in.subsystems");
         log.info("Reading role definitions from {}.", roleDefineFile);
@@ -258,7 +274,42 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
      * @throws IOException
      */
     protected void evaluateConsistency() throws IOException {
-        runConsistency(this, this.roles, this.rolesActual, this.nGenomes);
+        int fWidth = roles.size() - 1;
+        INDArray features = Nd4j.zeros(nGenomes, fWidth);
+        // Now we loop through the roles, computing predictions for each role.
+        log.info("Analyzing roles for {} genomes.", nGenomes);
+        for (int iRole = 0; iRole < roles.size(); iRole++) {
+            String role = roles.get(iRole);
+            // Fetch the model.
+            RandomForest model = this.models[iRole];
+            if (model != null) {
+                log.debug("Processing role #{} {}.", iRole, role);
+                // Create the input matrix.  It contains all the columns but the one for our target role.
+                for (int i = 0; i < nGenomes; i++) {
+                    for (int j = 0; j < iRole; j++) {
+                        features.put(i, j, rolesActual[i][j]);
+                    }
+                    for (int j = iRole; j < fWidth; j++) {
+                        features.put(i, j, rolesActual[i][j+1]);
+                    }
+                }
+                // Compute the predictions for this role.
+                INDArray output = model.predict(features);
+                // Convert the predictions from one-hots to numbers.
+                for (int i = 0; i < nGenomes; i++) {
+                    int jBest = 0;
+                    double vBest = output.getDouble(i, 0);
+                    for (int j = 1; j < output.size(1); j++) {
+                        double v = output.getDouble(i, j);
+                        if (v > vBest) {
+                            vBest = v;
+                            jBest = j;
+                        }
+                    }
+                    this.storeActual(iRole, role, i, jBest);
+                }
+            }
+        }
     }
 
     /**
