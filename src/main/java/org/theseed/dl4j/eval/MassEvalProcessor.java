@@ -15,12 +15,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.counters.GenomeEval;
 import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
 import org.theseed.io.TabbedLineReader;
@@ -61,29 +61,9 @@ public class MassEvalProcessor extends BaseEvaluator {
     private PrintStream outStream;
     /** TRUE if we have completeness data */
     private boolean haveCompleteness;
-    /** list of column headers (NOTE that the columns relating to completeness are at the end so they can be easily removed.) */
-    public static final String[] DEFAULT_HEADERS = new String[] { "Genome", "Name", "Score", "Good", "Taxonomy", "Good Seed",
-            "Ssu_rRNA", "Contigs", "Hypothetical", "Coarse", "Fine", "Completeness", "Contamination", "Group" };
     /** number of completeness-related columns */
     private static final int COMPLETENESS_COLUMNS = 3;
-    /** index of the genome ID column */
-    public static final int GENOME_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Genome");
-    /** index of the score column */
-    public static final int SCORE_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Score");
-    /** index of the good/bad column */
-    public static final int GOOD_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Good");
-    /** index of the SSU-present column */
-    public static final int SSU_RNA_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Ssu_rRNA");
-    /** index of the fine-consistency column */
-    public static final int FINE_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Fine");
-    /** index of the hypothetical-percent column */
-    public static final int HYPO_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Hypothetical");
-    /** index of the completeness-percent column */
-    public static final int COMPLETE_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Completeness");
-    /** index of the contamination-percent column */
-    public static final int CONTAM_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Contamination");
-    /** index of the good-seed column */
-    public static final int SEED_COL = ArrayUtils.indexOf(DEFAULT_HEADERS, "Good Seed");
+    
 
     // COMMAND-LINE OPTIONS
 
@@ -122,9 +102,9 @@ public class MassEvalProcessor extends BaseEvaluator {
         if (this.resumeFile == null) {
             // Normal processing.  Put the report to the standard output.
             // We also need a header.
-            int cols = DEFAULT_HEADERS.length;
+            int cols = GenomeEval.DEFAULT_HEADERS.length;
             if (! this.haveCompleteness) cols -= COMPLETENESS_COLUMNS;
-            String header = IntStream.range(0,  cols).mapToObj(i -> DEFAULT_HEADERS[i]).collect(Collectors.joining("\t"));
+            String header = IntStream.range(0,  cols).mapToObj(i -> GenomeEval.DEFAULT_HEADERS[i]).collect(Collectors.joining("\t"));
             System.out.println(header);
             this.outStream = System.out;
         } else {
@@ -187,7 +167,7 @@ public class MassEvalProcessor extends BaseEvaluator {
             String taxIds = Arrays.stream(genome.getLineage()).mapToObj(n -> Integer.toString(n))
                     .collect(Collectors.joining("::"));
             // Build the output line.
-            List<String> output = new ArrayList<String>(DEFAULT_HEADERS.length);
+            List<String> output = new ArrayList<String>(GenomeEval.DEFAULT_HEADERS.length);
             output.add(gReport.getId());
             output.add(gReport.getName());
             output.add(String.format("%8.2f", gReport.getScore()));

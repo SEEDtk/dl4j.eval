@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.theseed.counters.GenomeEval;
 import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
 import org.theseed.genome.Feature;
@@ -205,7 +206,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      * @return text describing the feature, or NULL if there is nothing of interest
      */
     @Override
-    protected DomContent advancedFeatureComment(Feature feat, GenomeStats gReport, String role) {
+    protected DomContent advancedFeatureComment(Feature feat, GenomeEval gReport, String role) {
         DomContent retVal = null;
         // Only proceed if we found a reference genome.
         if (this.refGenomeId != null) {
@@ -227,7 +228,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      * @param role		ID of the role of interest
      */
     @Override
-    protected void advancedRoleComment(ContainerTag list, GenomeStats gReport, String role) {
+    protected void advancedRoleComment(ContainerTag list, GenomeEval gReport, String role) {
         // Only proceed if a reference genome was found.
         if (this.refGenomeId != null) {
             // Get the features for this role from the kmer map.

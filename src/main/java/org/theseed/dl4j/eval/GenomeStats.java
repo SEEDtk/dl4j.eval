@@ -17,6 +17,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.UUID;
 
+import org.theseed.counters.GenomeEval;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -33,7 +34,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
  * @author Bruce Parrello
  *
  */
-public class GenomeStats {
+public class GenomeStats extends GenomeEval {
 
     // FIELDS
     /** source genome */
@@ -706,28 +707,10 @@ public class GenomeStats {
     }
 
     /**
-     * @return TRUE if the specified contamination percent indicates a clean genome
-     *
-     * @param contam	contamination percent
-     */
-    public static boolean indicatesClean(double contam) {
-        return (contam < 10.0);
-    }
-
-    /**
      * @return TRUE if this genome is consistently annotated, else FALSE
      */
     public boolean isConsistent() {
         return indicatesConsistent(this.getFinePercent());
-    }
-
-    /**
-     * @return TRUE if this fine consistency indicates a genome is consistently annotated, else FALSE
-     *
-     * @param fine	fine consistency percent
-     */
-    public static boolean indicatesConsistent(double fine) {
-        return (fine >= 85.0);
     }
 
     /**
@@ -738,28 +721,10 @@ public class GenomeStats {
     }
 
     /**
-     * @return TRUE if the completeness percent indicates a complete genome
-     *
-     * @param comp	completeness percent
-     */
-    public static boolean indicatesComplete(double comp) {
-        return (comp >= 80.0);
-    }
-
-    /**
      * @return TRUE if this genome's proteins are understood, else FALSE
      */
     public boolean isUnderstood() {
         return indicatesUnderstood(getHypotheticalPercent());
-    }
-
-    /**
-     * @return TRUE if the percent hypothetical protein percent indicates the genome is understood
-     *
-     * @param hypo	percent of proteins that are hypothetical
-     */
-    public static boolean indicatesUnderstood(double hypo) {
-        return (hypo <= 70.0);
     }
 
     /**

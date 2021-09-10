@@ -15,6 +15,7 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
+import org.theseed.counters.GenomeEval;
 import org.theseed.dl4j.eval.ContigAnalysis;
 import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
@@ -340,7 +341,7 @@ public class EvalHtmlReporter extends EvalReporter {
      *
      * @return text describing the feature, or NULL if there is nothing of interest
      */
-    protected DomContent advancedFeatureComment(Feature feat, GenomeStats gReport, String role) {
+    protected DomContent advancedFeatureComment(Feature feat, GenomeEval gReport, String role) {
         return null;
     }
 
@@ -352,7 +353,7 @@ public class EvalHtmlReporter extends EvalReporter {
      * @param role		role of interest
      */
 
-    protected void advancedRoleComment(ContainerTag list, GenomeStats gReport, String role) {
+    protected void advancedRoleComment(ContainerTag list, GenomeEval gReport, String role) {
     }
 
     /**
