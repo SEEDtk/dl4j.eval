@@ -419,7 +419,7 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
             this.version = vScanner.nextLine();
         } catch (IOException e) {
             // Cannot read version file, use the directory name.
-            this.version = String.format("%s (%s)", this.modelDir.getName(), e.getMessage());
+            this.version = String.format("%s (%s)", this.modelDir.getName(), e.toString());
         }
     }
 
