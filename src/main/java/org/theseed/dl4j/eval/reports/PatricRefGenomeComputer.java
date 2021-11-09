@@ -10,7 +10,7 @@ import java.util.Map;
 
 import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.genome.Genome;
-import org.theseed.p3api.Connection;
+import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.kmers.KmerCollectionGroup;
 import org.theseed.sequence.FastaInputStream;
@@ -32,7 +32,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
     /** buffer of reference genomes in memory */
     private Map<String, Genome> referenceBuffer;
     /** connection to PATRIC */
-    private Connection p3;
+    private P3Connection p3;
 
     /**
      * Initialize the reference genome computer from the files in a specified
@@ -44,7 +44,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
     public PatricRefGenomeComputer(File modelDir) throws IOException {
         super();
         // Connect to PATRIC.
-        this.p3 = new Connection();
+        this.p3 = new P3Connection();
         // Create the reference buffer.
         this.referenceBuffer = new HashMap<String, Genome>();
         // Read in the reference-genome database.

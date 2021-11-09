@@ -8,7 +8,7 @@ import java.io.IOException;
 
 import org.kohsuke.args4j.Option;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.p3api.Connection;
+import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;
 
 /**
@@ -49,7 +49,7 @@ public class P3EvalProcessor extends Evaluator {
     /** actual input column index */
     private int colIdx;
     /** activate PATRIC connection */
-    private Connection p3;
+    private P3Connection p3;
 
     // COMMAND-LINE OPTIONS
 
@@ -107,7 +107,7 @@ public class P3EvalProcessor extends Evaluator {
         // Set up the reference-genome engine (if necessary).
         this.setupRefGenomeEngine(this.refGenomeFile);
         // Connect to PATRIC.
-        this.p3 = new Connection();
+        this.p3 = new P3Connection();
         // Set up the output directory.
         this.setOutDir(this.outputDir);
         // Read in the role maps.

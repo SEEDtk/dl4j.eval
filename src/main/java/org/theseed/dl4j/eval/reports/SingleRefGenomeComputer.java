@@ -5,7 +5,7 @@ package org.theseed.dl4j.eval.reports;
 
 import org.theseed.dl4j.eval.GenomeStats;
 import org.theseed.genome.Genome;
-import org.theseed.p3api.Connection;
+import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;
 
 /**
@@ -27,7 +27,7 @@ public class SingleRefGenomeComputer extends RefGenomeComputer {
      */
     public SingleRefGenomeComputer(String refGenomeId) {
         // Connect to PATRIC.
-        Connection p3 = new Connection();
+        P3Connection p3 = new P3Connection();
         this.refGenome = P3Genome.load(p3, refGenomeId, P3Genome.Details.PROTEINS);
     }
 

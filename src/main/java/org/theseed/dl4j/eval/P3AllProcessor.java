@@ -15,7 +15,7 @@ import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.genome.GenomeMultiDirectory;
-import org.theseed.p3api.Connection;
+import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
@@ -49,7 +49,7 @@ public class P3AllProcessor extends BaseProcessor {
     /** output directory controller */
     private GenomeMultiDirectory gOutDir;
     /** connection to PATRIC */
-    private Connection p3;
+    private P3Connection p3;
 
     // COMMAND-LINE OPTIONS
 
@@ -69,8 +69,8 @@ public class P3AllProcessor extends BaseProcessor {
         @Override
         public int compare(JsonObject o1, JsonObject o2) {
             int retVal = 0;
-            String k1 = Connection.getString(o1, "genome_id");
-            String k2 = Connection.getString(o2, "genome_id");
+            String k1 = P3Connection.getString(o1, "genome_id");
+            String k2 = P3Connection.getString(o2, "genome_id");
             boolean b1 = P3AllProcessor.this.gOutDir.contains(k1);
             boolean b2 = P3AllProcessor.this.gOutDir.contains(k2);
             if (b1 == b2)
@@ -105,7 +105,7 @@ public class P3AllProcessor extends BaseProcessor {
     @Override
     protected void runCommand() throws Exception {
         // Connect to PATRIC.
-        this.p3 = new Connection();
+        this.p3 = new P3Connection();
         // Get a list of the public, prokaryotic genomes.
         SortedSet<JsonObject> genomes = new TreeSet<JsonObject>(this.new GenomeSorter());
         this.p3.addAllProkaryotes(genomes);
@@ -115,8 +115,8 @@ public class P3AllProcessor extends BaseProcessor {
         int downloaded = 0;
         long start = System.currentTimeMillis();
         for (JsonObject gRequest : genomes) {
-            String genomeId = Connection.getString(gRequest, "genome_id");
-            String name = Connection.getString(gRequest, "genome_name");
+            String genomeId = P3Connection.getString(gRequest, "genome_id");
+            String name = P3Connection.getString(gRequest, "genome_name");
             processed++;
             if (this.gOutDir.contains(genomeId))
                 log.info("Skipping {}. {} ({}):  already in output directory.", processed, genomeId, name);
