@@ -110,9 +110,12 @@ public class EvalProcessor extends Evaluator  {
         initializeData();
         // Allocate our arrays.
         this.allocateArrays(this.batchSize);
+        // Get all the genome IDs.
+        var genomeIDs = genomeDir.getIDs();
         // Loop through the genomes.  Note we track the genome's index in genomeStats;
         int iGenome = 0;
-        for (Genome genome : genomeDir) {
+        for (String genomeID : genomeIDs) {
+            Genome genome = genomeDir.getGenome(genomeID);
             // Insure there is room for this genome.
             if (iGenome >= this.batchSize) {
                 processBatch();
