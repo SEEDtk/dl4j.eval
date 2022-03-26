@@ -8,6 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
@@ -112,6 +113,9 @@ public class EvalProcessor extends Evaluator  {
         this.allocateArrays(this.batchSize);
         // Get all the genome IDs.
         var genomeIDs = genomeDir.getIDs();
+        int total = genomeIDs.size();
+        int done = 0;
+        long start = System.currentTimeMillis();
         // Loop through the genomes.  Note we track the genome's index in genomeStats;
         int iGenome = 0;
         for (String genomeID : genomeIDs) {
@@ -119,6 +123,12 @@ public class EvalProcessor extends Evaluator  {
             // Insure there is room for this genome.
             if (iGenome >= this.batchSize) {
                 processBatch();
+                done += iGenome;
+                if (log.isInfoEnabled()) {
+                    double millsPerGenome = (System.currentTimeMillis() - start) / done;
+                    Duration d = Duration.ofMillis((long) ((total - done) * millsPerGenome));
+                    log.info("{} of {} genomes processed.  {} left.", done, total, d.toString());
+                }
                 iGenome = 0;
             }
             // Store the genome.
@@ -129,6 +139,7 @@ public class EvalProcessor extends Evaluator  {
         // Process the residual batch.
         this.setnGenomes(iGenome);
         processBatch();
+        log.info("{} genomes processed.", total);
         // Finish processing.
         this.close();
     }
