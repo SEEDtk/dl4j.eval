@@ -7,8 +7,10 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -41,7 +43,7 @@ import org.theseed.utils.ParseFailureException;
  *
  * -h	display command-line usage
  * -v	show more detailed log messages
- * -b	batch size (default 100)
+ * -b	batch size (default 200)
  *
  * --resume		if specified, the name of a previous run's output file; it will be assumed the run was interrupted
  * 				and it will be continued with the next genome not yet processed
@@ -61,9 +63,11 @@ public class MassEvalProcessor extends BaseEvaluator {
     private PrintStream outStream;
     /** TRUE if we have completeness data */
     private boolean haveCompleteness;
+    /** set of genome IDs to skip */
+    private Set<String> skipSet;
     /** number of completeness-related columns */
     private static final int COMPLETENESS_COLUMNS = 3;
-    
+
 
     // COMMAND-LINE OPTIONS
 
@@ -87,7 +91,7 @@ public class MassEvalProcessor extends BaseEvaluator {
     protected void setDefaults() {
         this.inType = GenomeSource.Type.MASTER;
         this.haveCompleteness = false;
-        this.batchSize = 100;
+        this.batchSize = 200;
     }
 
     /**
@@ -107,16 +111,15 @@ public class MassEvalProcessor extends BaseEvaluator {
             String header = IntStream.range(0,  cols).mapToObj(i -> GenomeEval.DEFAULT_HEADERS[i]).collect(Collectors.joining("\t"));
             System.out.println(header);
             this.outStream = System.out;
+            this.skipSet = Collections.emptySet();
         } else {
             // Resume processing.  Save the roles we've already seen.
             try (TabbedLineReader reader = new TabbedLineReader(this.resumeFile)) {
                 int idColIdx = reader.findField("Genome");
-                Set<String> processedItems = new HashSet<String>(this.batchSize);
+                this.skipSet = new HashSet<String>(this.batchSize);
                 for (TabbedLineReader.Line line : reader) {
-                    processedItems.add(line.get(idColIdx));
+                    this.skipSet.add(line.get(idColIdx));
                 }
-                // Insure we filter the processed items out of the input stream.
-                this.master.setSkipSet(processedItems);
             }
             // Open the resume file for append-style output with autoflush.
             FileOutputStream outStream = new FileOutputStream(this.resumeFile, true);
@@ -132,12 +135,25 @@ public class MassEvalProcessor extends BaseEvaluator {
         this.setup();
         // Allocate our arrays.
         this.allocateArrays(this.batchSize);
-        // Loop through the genomes.  Note we track the genome's index in genomeStats;
+        // Get the list of genome IDs to process.
+        Set<String> genomeIDs = this.master.getIDs();
+        genomeIDs.removeAll(this.skipSet);
+        // Loop through the genomes.  Note we track the genome's index in genomeStats.
+        long start = System.currentTimeMillis();
+        int done = 0;
+        int total = genomeIDs.size();
         int iGenome = 0;
-        for (Genome genome : master) {
+        for (String genomeID : genomeIDs) {
+            Genome genome = this.master.getGenome(genomeID);
             // Insure there is room for this genome.
             if (iGenome >= this.batchSize) {
                 processBatch();
+                done += iGenome;
+                if (log.isInfoEnabled()) {
+                    double millisPerGenome = ((double) (System.currentTimeMillis() - start)) / done;
+                    Duration d = Duration.ofMillis((long) ((total - done) * millisPerGenome));
+                    log.info("{} of {} genomes processed. {} remaining.", done, total, d.toString());
+                }
                 iGenome = 0;
             }
             // Store the genome.
