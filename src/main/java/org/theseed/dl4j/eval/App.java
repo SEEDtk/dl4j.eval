@@ -19,6 +19,7 @@ import org.theseed.utils.BaseProcessor;
  * comp3	produce completeness engine from master directory
  * mass		produce a summary evaluation report on a group of genomes
  * sort		sort the summary evaluation report
+ * rRoles	create a report on the roles present or absent in a group of genomes
  * rTrain	process a role-training file to generate presence/absence classifiers
  *
  */
@@ -70,6 +71,9 @@ public class App
             break;
         case "rTrain" :
             processor = new RoleTrainProcessor();
+            break;
+        case "rRoles" :
+            processor = new RoleReportProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
