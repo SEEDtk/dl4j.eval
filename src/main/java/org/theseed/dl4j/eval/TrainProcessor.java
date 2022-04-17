@@ -22,7 +22,6 @@ import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.KFoldIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.dl4j.TabbedDataSetReader;
 import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.decision.RandomForest.Method;
 import org.theseed.dl4j.decision.RandomForest.Parms;
@@ -37,8 +36,8 @@ import org.theseed.utils.ParseFailureException;
  * in the first column.  A full pass is made through the file to get a list of the roles and the counts found for each.  A model is then
  * trained for every role.  These models can be used to create a consistency profile for new genomes.
  *
- * The models are trained by org.dlj4j.run.RandomForestTrainingProcessor.  The positional parameters are the name of the parameter file
- * and the name of the model directory.  The training set must be in a file named "training.tbl" in the model directory.
+ * The models are trained by org.dlj4j.run.RandomForestTrainingProcessor.  The positional parametere
+ * is the name of the model directory.  The training set must be in a file named "training.tbl" in the model directory.
  *
  * The following command-line options are supported.
  *
@@ -188,9 +187,9 @@ public class TrainProcessor extends BaseProcessor {
         long activeTime = 0;
         int processCount = 0;
         // Read in the two datasets.
-        DataSet trainingSet = readDataSet(this.trainingFile);
+        DataSet trainingSet = EvalUtilities.readDataSet(this.trainingFile, META_COLS);
         log.info("{} records in training set.", trainingSet.getFeatures().rows());
-        DataSet testingSet = readDataSet(this.testingFile);
+        DataSet testingSet = EvalUtilities.readDataSet(this.testingFile, META_COLS);
         log.info("{} records in testing set.", testingSet.getFeatures().rows());
         // Now we need to get the hyper-parameters from the parm file.
         RandomForest.Parms hParms = new RandomForest.Parms(trainingSet);
@@ -290,23 +289,6 @@ public class TrainProcessor extends BaseProcessor {
         parm = parms.get("method");
         if (parm != null && ! parm.isCommented())
             hParms.setMethod(Method.valueOf(parm.getValue()));
-    }
-
-    /**
-     * Read all the data from a training/testing file.
-     *
-     * @param inFile		file to read
-     *
-     * @return a dataset of the data in the file; it will not contain labels, only features
-     *
-     * @throws IOException
-     */
-    protected DataSet readDataSet(File inFile) throws IOException {
-        TabbedDataSetReader dataReader = new TabbedDataSetReader(inFile, META_COLS);
-        DataSet trainingSet = dataReader.readAll();
-        RandomForest.flattenDataSet(trainingSet);
-        dataReader.close();
-        return trainingSet;
     }
 
 }
