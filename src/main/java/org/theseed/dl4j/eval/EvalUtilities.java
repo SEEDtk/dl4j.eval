@@ -11,9 +11,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
+import org.nd4j.linalg.dataset.api.iterator.KFoldIterator;
 import org.nd4j.linalg.factory.Nd4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.TabbedDataSetReader;
 import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.io.TabbedLineReader;
@@ -25,6 +29,11 @@ import org.theseed.io.TabbedLineReader;
  *
  */
 public class EvalUtilities {
+
+    // FIELDS
+    /** logging facility */
+    protected static Logger log = LoggerFactory.getLogger(EvalUtilities.class);
+
 
     /**
      * Create a new dataset by removing the specified column and converting it to one-hot labels.
@@ -126,6 +135,32 @@ public class EvalUtilities {
         RandomForest.flattenDataSet(retVal);
         dataReader.close();
         return retVal;
+    }
+
+    /**
+     * Cross-validate a random forest training/testing set.
+     *
+     * @param hParms		hyper-parameters
+     * @param trainingSet	training/testing set to validate
+     * @param kFold			number of folds
+     *
+     * @return the interquartile range for this dataset
+     */
+    public static double crossValidate(RandomForest.Parms hParms, DataSet trainingSet, int kFold) {
+        KFoldIterator validator = new KFoldIterator(kFold, trainingSet);
+        DescriptiveStatistics stats = new DescriptiveStatistics();
+        int foldI = 1;
+        while (validator.hasNext()) {
+            log.info("Testing fold {}.", foldI);
+            DataSet trainFold = validator.next();
+            RandomForest classFold = new RandomForest(trainFold, hParms);
+            double accFold = classFold.getAccuracy(validator.testFold());
+            stats.addValue(accFold);
+            foldI++;
+        }
+        // Compute the IQR.
+        double iqr = stats.getPercentile(75.0) - stats.getPercentile(25.0);
+        return iqr;
     }
 
 }

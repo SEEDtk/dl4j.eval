@@ -1,7 +1,9 @@
 package org.theseed.dl4j.eval;
 
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -14,9 +16,6 @@ import java.util.List;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.theseed.proteins.RoleMatrix;
-
-import org.junit.Test;
-import static org.junit.Assert.*;
 
 public class ProtTest  {
 
@@ -133,7 +132,7 @@ public class ProtTest  {
     @Test
     public void testRoleMatrixStress() throws IOException {
         // rickettsia file (100 genomes)
-        File inFile = new File("src/test", "rickettsia.roles.tbl");
+        File inFile = new File("data", "rickettsia.roles.tbl");
         FileReader fileStream = new FileReader(inFile);
         RoleMatrix stressMatrix = new RoleMatrix(100, 100);
         Set<String> genomes = new HashSet<String>();

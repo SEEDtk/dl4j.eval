@@ -15,11 +15,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.nd4j.linalg.dataset.DataSet;
-import org.nd4j.linalg.dataset.api.iterator.KFoldIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.decision.RandomForest;
@@ -54,7 +52,7 @@ import org.theseed.utils.ParseFailureException;
 public class TrainProcessor extends BaseProcessor {
 
     /** logging facility */
-    private static Logger log = LoggerFactory.getLogger(TrainProcessor.class);
+    protected static Logger log = LoggerFactory.getLogger(TrainProcessor.class);
 
     // FIELDS
 
@@ -224,19 +222,8 @@ public class TrainProcessor extends BaseProcessor {
                         output.format("%d\t%s\t%8.4f\t\t1%n", roleI, roleId, accuracy);
                     } else {
                         // We have good accuracy but we must verify the stability of the data.
-                        KFoldIterator validator = new KFoldIterator(this.foldK, roleTrainingSet);
-                        DescriptiveStatistics stats = new DescriptiveStatistics();
-                        int foldI = 1;
-                        while (validator.hasNext()) {
-                            log.info("Testing fold {}.", foldI);
-                            DataSet trainFold = validator.next();
-                            RandomForest classFold = new RandomForest(trainFold, hParms);
-                            double accFold = classFold.getAccuracy(validator.testFold());
-                            stats.addValue(accFold);
-                            foldI++;
-                        }
-                        // Compute the IQR.
-                        double iqr = stats.getPercentile(75.0) - stats.getPercentile(25.0);
+                        int kFold = this.foldK;
+                        double iqr = EvalUtilities.crossValidate(hParms, roleTrainingSet, kFold);
                         if (iqr > this.maxIqr) {
                             log.info("Role {} rejected due to IQR = {}.", roleId, iqr);
                             output.format("%d\t%s\t%8.4f\t%8.4f\t%n", roleI, roleId, accuracy, iqr);

@@ -1,12 +1,9 @@
 package org.theseed.dl4j.eval;
 
-import junit.framework.Test;
-
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
-
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,31 +20,14 @@ import org.theseed.sequence.SequenceKmers;
 /**
  * Unit test for evaluation structures
  */
-public class AppTest extends TestCase
-{
-    /**
-     * Create the test case
-     *
-     * @param testName name of the test case
-     */
-    public AppTest( String testName )
-    {
-        super( testName );
-    }
-
-    /**
-     * @return the suite of tests being tested
-     */
-    public static Test suite()
-    {
-        return new TestSuite( AppTest.class );
-    }
+public class AppTest {
 
     /**
      * genome stats test
      * @throws IOException
      * @throws NumberFormatException
      */
+    @Test
     public void testGenomeStats() throws NumberFormatException, IOException {
         Genome fakeStreptomyces = new Genome("100226.11", "Streptomyces coelicolor clonal population", "Bacteria", 11);
         GenomeStats testGenome = new GenomeStats(fakeStreptomyces);
@@ -176,6 +156,7 @@ public class AppTest extends TestCase
     /**
      * test the phrase builder
      */
+    @Test
     public void testPhraseBuilder() {
         PhraseBuilder pb = new PhraseBuilder("which is", ".");
         assertThat(pb.toString(), equalTo("."));
@@ -191,6 +172,7 @@ public class AppTest extends TestCase
      * test universal role object
      * @throws IOException
      */
+    @Test
     public void testUniversalRoles() throws IOException {
         UniversalRoles uniRoles = new UniversalRoles(100, "R100 (Acidaminococcus fermentans DSM 20731)",
                 "MSDKLQELREKIQKDLSQVKSVEDLKNIRVQYLGKKGALTSILRSLGDVAAEERPKIGKMVNEVRAKMEQRINEQMKLLEAHQMEEKLASETLDFTLPGRKPALGHLHPVTQTLRDIKKVFMRMGFEVVEGPEIETDYFNFEALNLPKDHPARDMQDTFYITDDILLRTQTSGVQARTMQSREPNTPIRMICPGTVYRNDYDATHSPMFHQVEGLVVDKDISLADLKGTLELFCKEMFGDSVKIRLRPSFFPFTEPSCEVDISCVMCGGKGCRVCKNSGWLEILGAGMVHPNVLRMSGYDPDKMKGFAFGMGVERIAMLRYGIDDLRLFFENDLRFIRQF");
@@ -284,6 +266,7 @@ public class AppTest extends TestCase
     /**
      * test role influence object
      */
+    @Test
     public void testRoleInfluence() {
         RoleInfluence r1 = new RoleInfluence("roleA", "this is role A");
         RoleInfluence r2 = new RoleInfluence("roleB", "this is role B");

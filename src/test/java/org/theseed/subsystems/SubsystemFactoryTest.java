@@ -3,6 +3,7 @@
  */
 package org.theseed.subsystems;
 
+import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
@@ -10,7 +11,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import org.junit.Test;
 import org.theseed.io.LineReader;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.Role;
