@@ -52,7 +52,7 @@ import org.theseed.utils.ParseFailureException;
  * -q	maximum acceptable IQR during cross-validation (default 0.05)
  * -k	number of folds to use for cross-validation (default 5)
  * -t	testing set size, as a fraction of the total number of genomes (default 0.1)
- * -r	role definition file (default is "roles.in.subsystems" in the input directory)
+ * -r	role definition file (default is "roles.in.subsystems" in the parent of the input directory)
  *
  * --max	maxmimum acceptable role count (default 1)
  * --clear	if specified, the Roles subdirectory will be erased before processing
@@ -94,9 +94,9 @@ public class RoleTrainProcessor extends BaseReportProcessor {
     /** role definition map */
     private RoleMap roleMap;
     /** header for roles-to-run report */
-    private static final String ROLE_REPORT_HEADER = "role_id\tuseful\taccuracy\tiqr\tcommon\tpredictable";
+    private static final String ROLE_REPORT_HEADER = "role_id\tuseful\taccuracy\tiqr\tcommon\tpredictable\trole_name";
     /** data line format for roles-to-run report */
-    private static final String ROLE_REPORT_FORMAT = "%s\t%s\t%6.4f\t%6.4f\t%3d\t%s%n";
+    private static final String ROLE_REPORT_FORMAT = "%s\t%s\t%6.4f\t%6.4f\t%3d\t%s\t%s%n";
 
     // COMMAND-LINE OPTIONS
 
@@ -151,10 +151,13 @@ public class RoleTrainProcessor extends BaseReportProcessor {
         if (! this.dataFile.canRead())
             throw new FileNotFoundException("Input directory " + this.inDir + " does not have a readable data.tbl file.");
         // Check the role file.
-        if (this.roleFile == null)
-            this.roleFile = new File(inDir, "roles.in.subsystems");
+        if (this.roleFile == null) {
+            File parentDir = this.inDir.getAbsoluteFile().getParentFile();
+            this.roleFile = new File(parentDir, "roles.in.subsystems");
+        }
         if (! this.roleFile.canRead())
             throw new FileNotFoundException("Role definition file " + this.roleFile + " is not found or unreadable.");
+        log.info("Loading role definitions from {}.", this.roleFile);
         this.roleMap = RoleMap.load(this.roleFile);
         // Verify the validation parameters.
         if (this.minAcc > 1.0 || this.minAcc < 0)
@@ -206,13 +209,15 @@ public class RoleTrainProcessor extends BaseReportProcessor {
             int missingRoles = 0;
             for (int i = 0; i < nRoles; i++) {
                 String roleId = this.roleNames.get(i);
+                String roleName = this.roleMap.get(roleId);
+                if (roleName == null) roleName = "<unknown>";
                 roleCount++;
                 // Compute the role's most common value.
                 int[] counts = this.rolesToUse.get(roleId);
                 int bestI = IntStream.range(0, this.maxRoles).reduce(0, (i1,i2) -> (counts[i1] < counts[i2] ? i2 : i1));
                 if (this.uselessRoles.get(i)) {
                     log.info("{} has count {} for all genomes.", roleId, bestI);
-                    roleWriter.format(ROLE_REPORT_FORMAT, roleId, "", 1.0, 0.0, bestI, "Y");
+                    roleWriter.format(ROLE_REPORT_FORMAT, roleId, "", 1.0, 0.0, bestI, "Y", roleName);
                     predictable++;
                 } else {
                     useful++;
@@ -224,7 +229,7 @@ public class RoleTrainProcessor extends BaseReportProcessor {
                     log.info("Accuracy found was {}.", accuracy);
                     if (accuracy < this.minAcc) {
                         // Here the role is unpredictable.
-                        roleWriter.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, 1.0, bestI, "");
+                        roleWriter.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, 1.0, bestI, "", roleName);
                     } else {
                         // Use cross-validation to insure the data is stable.
                         log.info("Checking stability of {}.", roleId);
@@ -235,11 +240,11 @@ public class RoleTrainProcessor extends BaseReportProcessor {
                         if (iqr > this.maxIqr) {
                             log.info("{} is unstable.  IQR = {}.", roleId, iqr);
                             unstable++;
-                            predictFlag = "";
+                            predictFlag = "N";
                         } else {
                             File classFile = new File(this.rolesDir, roleId + ".ser");
                             predictable++;
-                            predictFlag = "Y";
+                            predictFlag = "";
                             // Save the classifier.
                             classifier.save(classFile);
                             log.info("{} with IQR {} and accuracy {} saved to {}.", roleId, iqr, accuracy, classFile);
@@ -251,14 +256,12 @@ public class RoleTrainProcessor extends BaseReportProcessor {
                                 int actualCount = ClassPredictError.computeBest(actuals, g);
                                 int predictCount = ClassPredictError.computeBest(predictions, g);
                                 if (actualCount < predictCount) {
-                                    String roleName = this.roleMap.getName(roleId);
-                                    if (roleName == null) roleName = "<unknown>";
                                     writer.println(this.genomeIds.get(g) + "\t" + roleId + "\t" + roleName);
                                     missingRoles++;
                                 }
                             }
                         }
-                        roleWriter.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, iqr, bestI, predictFlag);
+                        roleWriter.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, iqr, bestI, predictFlag, roleName);
                     }
                 }
                 if (log.isInfoEnabled() && useful > 0) {

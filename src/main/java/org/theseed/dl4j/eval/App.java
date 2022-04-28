@@ -21,6 +21,7 @@ import org.theseed.utils.BaseProcessor;
  * sort		sort the summary evaluation report
  * rRoles	create a report on the roles present or absent in a group of genomes
  * rTrain	process a role-training file to generate presence/absence classifiers
+ * rBuild	generate role-training files from a representative-genome list file
  *
  */
 public class App
@@ -74,6 +75,9 @@ public class App
             break;
         case "rRoles" :
             processor = new RoleReportProcessor();
+            break;
+        case "rBuild" :
+            processor = new RoleBuildProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
