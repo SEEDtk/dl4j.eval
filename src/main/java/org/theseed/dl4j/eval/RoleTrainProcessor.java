@@ -5,13 +5,17 @@ package org.theseed.dl4j.eval;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.IntStream;
 
 import org.apache.commons.io.FileUtils;
@@ -26,8 +30,9 @@ import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.TabbedDataSetReader;
 import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.train.ClassPredictError;
+import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.RoleMap;
-import org.theseed.utils.BaseReportProcessor;
+import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
 /**
@@ -38,29 +43,29 @@ import org.theseed.utils.ParseFailureException;
  * accurate predictors and the roles for which there is variable input along with the predictive
  * capability of each role.  This information will be used to determine how to run the predictors.
  *
- * The missing roles in each genome will be output to a report on the standard output.
+ * The missing roles in each genome will be output to a report in the file "missingRoles.tbl".
  *
  * The positional parameter is the name of the input directory, which must contain "data.tbl" and
- * which will receive the "roles.to.run" file and the "Roles" subdirectory.
+ * which will receive the "roles.to.run" file, the "missingRoles.tbl" file and the "Roles" subdirectory.
  *
  * The command-line options are as follows:
  *
  * -h	display command-line usage
  * -v	display more frequent log messages
- * -o	output file for missing roles (if not STDOUT)
  * -m	minimum acceptable accuracy for a model to be output (default is 0.93
  * -q	maximum acceptable IQR during cross-validation (default 0.05)
  * -k	number of folds to use for cross-validation (default 5)
  * -t	testing set size, as a fraction of the total number of genomes (default 0.1)
  * -r	role definition file (default is "roles.in.subsystems" in the parent of the input directory)
  *
- * --max	maxmimum acceptable role count (default 1)
- * --clear	if specified, the Roles subdirectory will be erased before processing
+ * --max		maxmimum acceptable role count (default 1)
+ * --clear		if specified, the Roles subdirectory will be erased before processing and the "missingRole.tbl"
+ * 				and "roles.to.run" files will be overwritten; otherwise, we will resume from the previous run
  *
  * @author Bruce Parrello
  *
  */
-public class RoleTrainProcessor extends BaseReportProcessor {
+public class RoleTrainProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
@@ -83,20 +88,43 @@ public class RoleTrainProcessor extends BaseReportProcessor {
     private DataSet trainingSet;
     /** testing set for current role */
     private DataSet testingSet;
-    /** array of genome IDs for the testing and training sets */
-    private List<String> genomeIds;
     /** number of rows to put in the testing set */
     private int nTestRows;
+    /** map of testing set rows to genome IDs */
+    private String[] testGenomes;
+    /** map of training set rows to genome IDs */
+    private String[] trainGenomes;
     /** number of possible role-count values */
     private int nLabels;
     /** number of input columns */
     private int nInputs;
     /** role definition map */
     private RoleMap roleMap;
+    /** counter of missing roles */
+    private int missingRoles;
+    /** counter of predictable roles */
+    private int predictable;
+    /** counter of unstable roles */
+    private int unstable;
+    /** counter of useful roles */
+    private int useful;
+
+    /** set of previously-run roles */
+    private Set<String> rolesRun;
+    /** print writer for missing-roles report */
+    private PrintWriter missingRolesStream;
+    /** print writer for roles-to-run report */
+    private PrintWriter rolesToRunStream;
+    /** file name for missing-roles report */
+    private File missingRolesFile;
+    /** file name for roles-to-run report */
+    private File rolesToRunFile;
     /** header for roles-to-run report */
     private static final String ROLE_REPORT_HEADER = "role_id\tuseful\taccuracy\tiqr\tcommon\tpredictable\trole_name";
     /** data line format for roles-to-run report */
     private static final String ROLE_REPORT_FORMAT = "%s\t%s\t%6.4f\t%6.4f\t%3d\t%s\t%s%n";
+    /** header line for missing-roles report */
+    private static final String MISSING_ROLE_HEADER = "genome\tmissing_role\tdescription";
 
     // COMMAND-LINE OPTIONS
 
@@ -133,7 +161,7 @@ public class RoleTrainProcessor extends BaseReportProcessor {
     private File inDir;
 
     @Override
-    protected void setReporterDefaults() {
+    protected void setDefaults() {
         this.minAcc = 0.93;
         this.maxIqr = 0.05;
         this.foldK = 5;
@@ -143,7 +171,7 @@ public class RoleTrainProcessor extends BaseReportProcessor {
     }
 
     @Override
-    protected void validateReporterParms() throws IOException, ParseFailureException {
+    protected boolean validateParms() throws IOException, ParseFailureException {
         // Validate the input directory.
         if (! this.inDir.isDirectory())
             throw new FileNotFoundException("Input directory " + this.inDir + " is not found or invalid.");
@@ -174,101 +202,208 @@ public class RoleTrainProcessor extends BaseReportProcessor {
         // Verify the testing-set fraction.
         if (this.testSize <= 0.0 || this.testSize >= 1)
             throw new ParseFailureException("Testing-set fraction must be between 0 and 1.");
-        // Set up the roles subdirectory.
+        // Define the output files.
+        this.rolesToRunFile = new File(this.inDir, "roles.to.run");
+        this.missingRolesFile = new File(this.inDir, "missingRoles.tbl");
+        // Denote no roles have been run yet.
+        this.missingRoles = 0;
+        this.predictable = 0;
+        this.unstable = 0;
+        this.useful = 0;
+        this.rolesRun = new HashSet<String>(3000);
+        // Set up the roles subdirectory.  If the directory is new, or there is no roles-to-run file,
+        // we start the output files from scratch.  Otherwise, we have to compute our previous progress.
         this.rolesDir = new File(this.inDir, "Roles");
         if (! this.rolesDir.exists()) {
             log.info("Creating Roles subdirectory.");
             FileUtils.forceMkdir(this.rolesDir);
+            this.initOutput();
         } else if (this.clearFlag) {
             log.info("Erasing Roles subdirectory.");
             FileUtils.cleanDirectory(this.rolesDir);
+            this.initOutput();
+        } else if (! this.rolesToRunFile.exists())
+            this.initOutput();
+        else
+            this.restartOutput();
+        return true;
+    }
+
+    /**
+     * Initialize the two output streams.  Here we are resuming a run.  The roles-to-run file is read to
+     * determine what roles have already been run and the missing-roles file is rebuilt to contain only the
+     * data for those roles.  We then append to roles-to-run.
+     *
+     * @throws IOException
+     */
+    private void restartOutput() throws IOException {
+        log.info("Restarting job.");
+        // Get all the missing-roles records sorted by role.
+        var missingRoleMap = new TreeMap<String, List<String>>();
+        if (this.missingRolesFile.exists()) {
+            try (TabbedLineReader missedRoleStream = new TabbedLineReader(this.missingRolesFile)) {
+                int roleCol = missedRoleStream.findField("missing_role");
+                for (TabbedLineReader.Line line : missedRoleStream) {
+                    String roleId = line.get(roleCol);
+                    List<String> missingLines = missingRoleMap.computeIfAbsent(roleId, x -> new ArrayList<String>());
+                    missingLines.add(line.getAll());
+                }
+            }
         }
+        // Now, read roles-to-run to get all of the roles fully processed.  We know the file exists
+        // because we wouldn't be here if it didn't.
+        try (TabbedLineReader roleStream = new TabbedLineReader(rolesToRunFile)) {
+            int roleCol = roleStream.findField("role_id");
+            int usefulCol = roleStream.findField("useful");
+            int predictCol = roleStream.findField("predictable");
+            int iqrCol = roleStream.findField("iqr");
+            // Open the missing-roles file for output.  We will rebuild it here.
+            this.missingRolesStream = new PrintWriter(this.missingRolesFile);
+            this.missingRolesStream.println(MISSING_ROLE_HEADER);
+            // Now we loop through the file, filling rolesRun and the missing-roles file,
+            // and updating the counters.
+            for (TabbedLineReader.Line line : roleStream) {
+                String role = line.get(roleCol);
+                this.rolesRun.add(role);
+                if (line.getDouble(iqrCol) > this.maxIqr) this.unstable++;
+                if (line.getFlag(usefulCol)) this.useful++;
+                if (line.getFlag(predictCol)) this.predictable++;
+                // Output the missing roles.
+                List<String> missingLines = missingRoleMap.get(role);
+                if (missingLines != null) {
+                    for (String mLine : missingLines) {
+                        this.missingRolesStream.println(mLine);
+                        this.missingRoles++;
+                    }
+                }
+            }
+        }
+        // Insure the missing-roles file is up-to-date.
+        this.missingRolesStream.flush();
+        // Open the role-to-run report for appending.
+        this.rolesToRunStream = new PrintWriter(new FileOutputStream(this.rolesToRunFile, true));
+        log.info("Job restarted with {} already run.  {} missing roles, {} predictable, {} useful.",
+                this.rolesRun.size(), this.missingRoles, this.predictable, this.useful);
+    }
+
+    /**
+     * Initialize the two output streams.  Both are open for writing.
+     *
+     * @throws IOException
+     */
+    private void initOutput() throws IOException {
+        // Open the two output writers for normal writing and write the headers.
+        this.rolesToRunStream = new PrintWriter(this.rolesToRunFile);
+        this.rolesToRunStream.println(ROLE_REPORT_HEADER);
+        this.rolesToRunStream.flush();
+        // Since now the role file exists, insure the header is present.
+        this.rolesToRunStream.flush();
+        this.missingRolesStream = new PrintWriter(this.missingRolesFile);
+        this.missingRolesStream.println(MISSING_ROLE_HEADER);
+        log.info("Initialized for new job.");
     }
 
     @Override
-    protected void runReporter(PrintWriter writer) throws Exception {
-        // Survey the role counts.
-        log.info("Computing role counts in {}.", this.dataFile);
-        this.rolesToUse = EvalUtilities.buildRolesToUse(this.dataFile, this.maxRoles);
-        // Read in the master dataset.
-        this.setupDataTable();
-        // Write the output header for the false-negative report.
-        writer.println("genome\tmissing_role\tdescription");
-        // Set up the roles-to-run file.
-        try (PrintWriter roleWriter = new PrintWriter(new File(this.inDir, "roles.to.run"))) {
-            roleWriter.println(ROLE_REPORT_HEADER);
+    protected void runCommand() throws Exception {
+        try {
+            // Read in the master dataset.
+            this.setupDataTable();
             log.info("Processing individual roles.");
             final int nRoles = this.roleNames.size();
-            final int nGenomes = this.masterTable.numExamples();
-            // Set up the counters.
+            // Set up the timing facility.
+            int runCount = 0;
             long start = System.currentTimeMillis();
-            int predictable = 0;
-            int unstable = 0;
-            int useful = 0;
-            int roleCount = 0;
-            int missingRoles = 0;
+            // Loop through the roles.
             for (int i = 0; i < nRoles; i++) {
                 String roleId = this.roleNames.get(i);
-                String roleName = this.roleMap.get(roleId);
-                if (roleName == null) roleName = "<unknown>";
-                roleCount++;
-                // Compute the role's most common value.
-                int[] counts = this.rolesToUse.get(roleId);
-                int bestI = IntStream.range(0, this.maxRoles).reduce(0, (i1,i2) -> (counts[i1] < counts[i2] ? i2 : i1));
-                if (this.uselessRoles.get(i)) {
-                    log.info("{} has count {} for all genomes.", roleId, bestI);
-                    roleWriter.format(ROLE_REPORT_FORMAT, roleId, "", 1.0, 0.0, bestI, "Y", roleName);
-                    predictable++;
-                } else {
-                    useful++;
-                    // Split master dataset into training and testing, and remove useless roles.
-                    this.buildDataSets(i);
-                    log.info("Generating classifier for {}.", roleId);
-                    RandomForest classifier = new RandomForest(this.trainingSet, this.hParms);
-                    double accuracy = classifier.getAccuracy(this.testingSet);
-                    log.info("Accuracy found was {}.", accuracy);
-                    if (accuracy < this.minAcc) {
-                        // Here the role is unpredictable.
-                        roleWriter.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, 1.0, bestI, "", roleName);
+                if (! this.rolesRun.contains(roleId)) {
+                    String roleName = this.roleMap.get(roleId);
+                    if (roleName == null) roleName = "<unknown>";
+                    this.rolesRun.add(roleId);
+                    // Compute the role's most common value.
+                    int[] counts = this.rolesToUse.get(roleId);
+                    int bestI = IntStream.range(0, this.maxRoles + 1).reduce(0, (i1,i2) -> (counts[i1] < counts[i2] ? i2 : i1));
+                    if (this.uselessRoles.get(i)) {
+                        log.info("{} has count {} for all genomes.", roleId, bestI);
+                        this.rolesToRunStream.format(ROLE_REPORT_FORMAT, roleId, "", 1.0, 0.0, bestI, "Y", roleName);
+                        this.predictable++;
                     } else {
-                        // Use cross-validation to insure the data is stable.
-                        log.info("Checking stability of {}.", roleId);
-                        String predictFlag;
-                        // Concatenate the training set to the testing set.
-                        this.trainingSet = DataSet.merge(Arrays.asList(this.testingSet, this.trainingSet));
-                        double iqr = EvalUtilities.crossValidate(this.hParms, this.trainingSet, this.foldK);
-                        if (iqr > this.maxIqr) {
-                            log.info("{} is unstable.  IQR = {}.", roleId, iqr);
-                            unstable++;
-                            predictFlag = "N";
+                        this.useful++;
+                        // Split master dataset into training and testing, and remove useless roles.
+                        this.buildDataSets(i);
+                        log.info("Generating classifier for {}.", roleId);
+                        RandomForest classifier = new RandomForest(this.trainingSet, this.hParms);
+                        double accuracy = classifier.getAccuracy(this.testingSet);
+                        log.info("Accuracy found was {}.", accuracy);
+                        if (accuracy < this.minAcc) {
+                            // Here the role is unpredictable.
+                            this.rolesToRunStream.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, 1.0, bestI, "", roleName);
                         } else {
-                            File classFile = new File(this.rolesDir, roleId + ".ser");
-                            predictable++;
-                            predictFlag = "";
-                            // Save the classifier.
-                            classifier.save(classFile);
-                            log.info("{} with IQR {} and accuracy {} saved to {}.", roleId, iqr, accuracy, classFile);
-                            // Now predict everything and pull out the ones where the predicted role count is lower
-                            // than the actual.
-                            INDArray predictions = classifier.predict(this.trainingSet.getFeatures());
-                            INDArray actuals = this.trainingSet.getLabels();
-                            for (int g = 0; g < nGenomes; g++) {
-                                int actualCount = ClassPredictError.computeBest(actuals, g);
-                                int predictCount = ClassPredictError.computeBest(predictions, g);
-                                if (actualCount < predictCount) {
-                                    writer.println(this.genomeIds.get(g) + "\t" + roleId + "\t" + roleName);
-                                    missingRoles++;
-                                }
+                            runCount++;
+                            // Use cross-validation to insure the data is stable.
+                            log.info("Checking stability of {}.", roleId);
+                            String predictFlag;
+                            // Concatenate the training set to the testing set.
+                            double iqr = EvalUtilities.crossValidate(this.hParms, this.trainingSet.copy(), this.foldK);
+                            if (iqr > this.maxIqr) {
+                                log.info("{} is unstable.  IQR = {}.", roleId, iqr);
+                                this.unstable++;
+                                predictFlag = "";
+                            } else {
+                                File classFile = new File(this.rolesDir, roleId + ".ser");
+                               this.predictable++;
+                                predictFlag = "Y";
+                                // Save the classifier.
+                                classifier.save(classFile);
+                                log.info("{} with IQR {} and accuracy {} saved to {}.", roleId, iqr, accuracy, classFile);
+                                // Now predict everything and pull out the ones where the predicted role count is lower
+                                // than the actual.
+                                this.checkForMissing(roleId, roleName, classifier, this.trainingSet,
+                                        this.trainGenomes);
+                                this.checkForMissing(roleId, roleName, classifier, this.testingSet,
+                                        this.testGenomes);
+                                this.missingRolesStream.flush();
                             }
+                            this.rolesToRunStream.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, iqr, bestI, predictFlag, roleName);
+                            this.rolesToRunStream.flush();
                         }
-                        roleWriter.format(ROLE_REPORT_FORMAT, roleId, "Y", accuracy, iqr, bestI, predictFlag, roleName);
+                    }
+                    if (log.isInfoEnabled() && runCount > 0) {
+                        double rate = (System.currentTimeMillis() - start) / (runCount * 1000.0);
+                        log.info("{} roles processed.  {} predictable, {} useful, {} unstable, {} missing role occurrences, {} seconds/role.",
+                                this.rolesRun.size(), this.predictable, this.useful, this.unstable, this.missingRoles,
+                                rate);
                     }
                 }
-                if (log.isInfoEnabled() && useful > 0) {
-                    double rate = (System.currentTimeMillis() - start) / (useful * 1000.0);
-                    log.info("{} roles processed.  {} predictable, {} useful, {} unstable, {} missing role occurrences, {} seconds/role.",
-                            roleCount, predictable, useful, unstable, missingRoles, rate);
-                }
+            }
+        } finally {
+            // Insure the files close.
+            this.missingRolesStream.close();
+            this.rolesToRunStream.close();
+        }
+    }
+
+    /**
+     * Run the classifier and determine if any roles are missing.
+     *
+     * @param roleId		ID of role being predicted
+     * @param roleName		name of the role for the reports
+     * @param classifier	classifier for making predictions
+     * @param mySet			dataset to run through predictor
+     * @param myGenomeIds	array of genome IDs for the dataset rows
+     */
+    private void checkForMissing(String roleId, String roleName,
+            RandomForest classifier, DataSet mySet, String[] myGenomeIds) {
+        INDArray predictions = classifier.predict(mySet.getFeatures());
+        INDArray actuals = mySet.getLabels();
+        for (int g = 0; g < myGenomeIds.length; g++) {
+            int actualCount = ClassPredictError.computeBest(actuals, g);
+            int predictCount = ClassPredictError.computeBest(predictions, g);
+            if (actualCount < predictCount) {
+                log.info("Actual is {}, predicted is {} for {} missing in {}.", actualCount, predictCount,
+                        roleId, myGenomeIds[g]);
+                this.missingRolesStream.println(myGenomeIds[g] + "\t" + roleId + "\t" + roleName);
+                this.missingRoles++;
             }
         }
     }
@@ -281,17 +416,13 @@ public class RoleTrainProcessor extends BaseReportProcessor {
      *
      * @param iRole		index of the role column to use as the output label
      */
-    private void buildDataSets(int iRole) {
+    protected void buildDataSets(int iRole) {
         // Our first task will be to determine the rows that go in the testing set.  We need to scramble
         // the rows (which we will do indirectly), and then put the first one we find of each output
         // value in the testing set.  First, the array with the scrambling.
         final int nRows = this.masterTable.numExamples();
         int[] shuffler = IntStream.range(0, nRows).toArray();
         ArrayUtils.shuffle(shuffler);
-        // Get the original metadata array.
-        List<String> masterGenomeIds = this.masterTable.getExampleMetaData(String.class);
-        // Set up to build the training/testing genome ID list.
-        this.genomeIds = Arrays.stream(shuffler).mapToObj(r -> masterGenomeIds.get(r)).collect(Collectors.toList());
         // This boolean array tells us which values have a presence in the testing set.
         boolean[] found = new boolean[this.nLabels];
         // Finally, get the array of rows.
@@ -310,9 +441,11 @@ public class RoleTrainProcessor extends BaseReportProcessor {
                 }
             }
         }
-        // Now we create the two datasets.
-        this.testingSet = this.buildDataSet(shuffler, iRole, 0, this.nTestRows);
-        this.trainingSet = this.buildDataSet(shuffler, iRole, this.nTestRows, nRows);
+        // Now we create the two datasets.  We also need directories for the genome IDs.
+        this.testGenomes = new String[this.nTestRows];
+        this.trainGenomes = new String[nRows - this.nTestRows];
+        this.testingSet = this.buildDataSet(shuffler, iRole, this.testGenomes, 0, this.nTestRows);
+        this.trainingSet = this.buildDataSet(shuffler, iRole, this.trainGenomes, this.nTestRows, nRows);
     }
 
 
@@ -323,12 +456,15 @@ public class RoleTrainProcessor extends BaseReportProcessor {
      *
      * @param shuffler		shuffle array containing the indices of the rows to use
      * @param iRole			column index of the output role to use for labels
+     * @param gArray		array for storing the genome IDs of each output row
      * @param i1			position of the first index from the shuffe array to copy
      * @param i2			position past the last index from the suffle array to copy
      *
      * @return a dataset formed from the specified master table rows
      */
-    private DataSet buildDataSet(int[] shuffler, int iRole, int i1, int i2) {
+    protected DataSet buildDataSet(int[] shuffler, int iRole, String[] gArray, int i1, int i2) {
+        // Get the original metadata array.
+        List<String> masterGenomeIds = this.masterTable.getExampleMetaData(String.class);
         // Get the features of the master data table.
         INDArray features = this.masterTable.getFeatures();
         // Get the number of columns in the features array.
@@ -341,6 +477,7 @@ public class RoleTrainProcessor extends BaseReportProcessor {
         // Loop through the shuffle array, extracting rows.
         for (int r = i1; r < i2; r++) {
             int inR = shuffler[r];
+            gArray[r - i1] = masterGenomeIds.get(inR);
             // This will be the next output column.
             int outC = 0;
             for (int c = 0; c < nCols; c++) {
@@ -362,11 +499,14 @@ public class RoleTrainProcessor extends BaseReportProcessor {
     }
 
     /**
-     * Read in the data file to get the master dataset and the list of role names.
+     * Read in the data files to get the master dataset and the list of role names.
      *
      * @throws IOException
      */
-    private void setupDataTable() throws IOException {
+    protected void setupDataTable() throws IOException {
+        // Survey the role counts.
+        log.info("Computing role counts in {}.", this.dataFile);
+        this.rolesToUse = EvalUtilities.buildRolesToUse(this.dataFile, this.maxRoles);
         // Initialize the reader with the first column as the only metadata column.
         try (TabbedDataSetReader dataReader = new TabbedDataSetReader(this.dataFile, List.of("1"))) {
             this.masterTable = dataReader.readAll();
@@ -397,5 +537,65 @@ public class RoleTrainProcessor extends BaseReportProcessor {
             if (this.nTestRows <= this.maxRoles) this.nTestRows = this.nLabels;
         }
     }
+
+    /**
+     * @return the masterTable
+     */
+    protected DataSet getMasterTable() {
+        return this.masterTable;
+    }
+
+    /**
+     * @return the trainingSet
+     */
+    protected DataSet getTrainingSet() {
+        return this.trainingSet;
+    }
+
+    /**
+     * @return the testingSet
+     */
+    protected DataSet getTestingSet() {
+        return this.testingSet;
+    }
+
+    /**
+     * Specify the input directory.
+     *
+     * @param dir		input directory to use
+     */
+    protected void setInDir(File dir) {
+        this.inDir = dir;
+    }
+
+    /**
+     * @return the testGenomes array
+     */
+    protected String[] getTestGenomes() {
+        return this.testGenomes;
+    }
+
+    /**
+     * @return the trainGenomes array
+     */
+    protected String[] getTrainGenomes() {
+        return this.trainGenomes;
+    }
+
+    /**
+     * @return the roleNames
+     */
+    protected List<String> getRoleNames() {
+        return this.roleNames;
+    }
+
+    /**
+     * @return the uselessRoles
+     */
+    protected BitSet getUselessRoles() {
+        return this.uselessRoles;
+    }
+
+
 
 }
