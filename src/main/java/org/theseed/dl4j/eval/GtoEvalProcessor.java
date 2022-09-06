@@ -37,6 +37,7 @@ import org.theseed.utils.ICommand;
  * --clear		clear the output directory before processing
  * --format		specify the output format-- HTML, DEEP, or TEXT
  * --ref		ID of a PATRIC genome to be used as the reference in a DEEP report
+ * --home		home location of genome, to override the one in the GTO
  *
  * @author Bruce Parrello
  *
@@ -65,6 +66,10 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
     @Option(name = "--ref", usage = "ID of reference genome to use for a DEEP report")
     private String refGenomeID;
 
+    /** overriding home location of genome */
+    @Option(name = "--home", usage = "home location of genome (overrides GTO value)")
+    private String homeName;
+
 
     @Override
     public void validateEvalParms() throws IOException {
@@ -85,6 +90,7 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         this.outFile = null;
         this.outputDir = new File(System.getProperty("user.dir"));
         this.refGenomeID = null;
+        this.homeName = null;
     }
 
     @Override
@@ -105,6 +111,10 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         } else {
             genome = new Genome(System.in);
         }
+        // Override the home, if required, and insure it is valid.
+        if (this.homeName != null)
+            genome.setHome(this.homeName);
+        genome.checkHome();
         log.info("Analyzing genome {}.", genome.getId());
         // Allocate the arrays.
         this.allocateArrays(1);
