@@ -9,6 +9,7 @@ import java.io.IOException;
 import org.kohsuke.args4j.Option;
 import org.theseed.dl4j.eval.reports.EvalReporter;
 import org.theseed.dl4j.eval.reports.IRefReporter;
+import org.theseed.dl4j.eval.reports.PatricRefGenomeComputer;
 import org.theseed.dl4j.eval.reports.SingleRefGenomeComputer;
 import org.theseed.genome.Genome;
 import org.theseed.utils.ICommand;
@@ -100,6 +101,15 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
             IRefReporter refReporter = (IRefReporter) this.getReporter();
             if (refGenomeID != null)
                 refReporter.setEngine(new SingleRefGenomeComputer(refGenomeID));
+            else {
+                // If we have a refGenomes.fa, we use the PATRIC-style reference genome computer.
+                File modelDir = this.getModelDir();
+                File refFasta = new File(modelDir, "refGenomes.fa");
+                if (refFasta.canRead())
+                    refReporter.setEngine(new PatricRefGenomeComputer(modelDir));
+                else
+                    log.info("No reference genomes available.");
+            }
         }
         // Read in the role maps.
         initializeData();
