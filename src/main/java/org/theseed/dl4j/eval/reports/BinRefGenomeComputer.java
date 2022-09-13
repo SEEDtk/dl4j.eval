@@ -7,7 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
-import org.theseed.dl4j.eval.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 
 /**

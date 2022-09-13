@@ -9,7 +9,8 @@ import java.io.UncheckedIOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.dl4j.eval.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeAnalysis;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.RoleMap;
 
@@ -196,10 +197,11 @@ public abstract class EvalReporter implements AutoCloseable {
      * Write the detail report for a genome.
      *
      * @param gReport	stats for the genome of interest
+     * @param analysis	analysis of the genome to write
      *
      * @throws IOException
      */
-    protected abstract void writeDetails(GenomeStats gReport) throws IOException;
+    protected abstract void writeDetails(GenomeStats gReport, GenomeAnalysis analysis) throws IOException;
 
     /**
      * Write the summary data for a genome.
@@ -221,10 +223,11 @@ public abstract class EvalReporter implements AutoCloseable {
      * Output the details for a genome.
      *
      * @param gReport	stats for the genome to write
+     * @param analysis	analysis of genome to write
      *
      * @throws IOException
      */
-    public void writeGenome(GenomeStats gReport) throws IOException {
+    public void writeGenome(GenomeStats gReport, GenomeAnalysis analysis) throws IOException {
         // Count this genome.
         this.genomeCount++;
         if (gReport.isGood()) this.goodCount++;
@@ -239,7 +242,7 @@ public abstract class EvalReporter implements AutoCloseable {
             writeSummary(gReport);
         // Write this genome's detail report.
         if (this.details)
-            writeDetails(gReport);
+            writeDetails(gReport, analysis);
     }
 
     /**
@@ -375,14 +378,7 @@ public abstract class EvalReporter implements AutoCloseable {
     }
 
 
-    /**
-     * Perform special setup for the specified batch of evaluated genomes.
-     *
-     * @param reports	array of genome evaluations
-     */
-    public abstract void setupGenomes(GenomeStats[] reports);
-
-    /**
+   /**
      * Specify the output directory.
      *
      * @param outDir	proposed output directory

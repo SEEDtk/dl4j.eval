@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.theseed.dl4j.eval.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;

@@ -17,7 +17,8 @@ import java.util.regex.Pattern;
 import static j2html.TagCreator.*;
 
 import org.apache.commons.io.FileUtils;
-import org.theseed.dl4j.eval.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeAnalysis;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Annotation;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -40,19 +41,12 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
 
     // FIELDS
 
-    /** reference-genome computation engine */
-    private RefGenomeComputer refEngine;
     /** table rows for summary report */
     List<DomContent> summaryRows;
     /** genome comparator */
     private CompareFeatures compareObj;
 
     private static final Pattern EVIDENCE_PATTERN = Pattern.compile("Annotated with evidence (\\d+) and strength (\\d+\\.\\d+)");
-
-    @Override
-    public void setEngine(RefGenomeComputer refEngine) {
-        this.refEngine = refEngine;
-    }
 
     @Override
     protected void initialize(File modelDir) throws IOException {
@@ -73,13 +67,13 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
     }
 
     @Override
-    protected void writeDetails(GenomeStats gReport) throws IOException {
+    protected void writeDetails(GenomeStats gReport, GenomeAnalysis analysis) throws IOException {
         // Get the genome ID and the output file.
         Genome newGenome = gReport.getGenome();
         String genomeId = newGenome.getId();
         File outFile = this.htmlFile(genomeId);
         // Get the reference genome.  Only proceed if we have one.
-        Genome refGenome = this.refEngine.ref(newGenome);
+        Genome refGenome = analysis.getRefGenome();
         if (refGenome != null) {
             // Compare the genomes.  Only proceed if the compare works.
             boolean compared = this.compareObj.compare(newGenome, refGenome);
@@ -226,9 +220,5 @@ public class EvalCompareReporter extends EvalReporter implements IRefReporter {
     protected void finish() {
     }
 
-    @Override
-    public void setupGenomes(GenomeStats[] reports) {
-        this.refEngine.setupReferences(reports);
-    }
 
 }

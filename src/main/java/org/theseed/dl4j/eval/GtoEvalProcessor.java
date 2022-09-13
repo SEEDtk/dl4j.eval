@@ -8,9 +8,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.kohsuke.args4j.Option;
 import org.theseed.dl4j.eval.reports.EvalReporter;
-import org.theseed.dl4j.eval.reports.IRefReporter;
-import org.theseed.dl4j.eval.reports.PatricRefGenomeComputer;
-import org.theseed.dl4j.eval.reports.SingleRefGenomeComputer;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.utils.ICommand;
 
@@ -39,6 +37,7 @@ import org.theseed.utils.ICommand;
  * --format		specify the output format-- HTML, DEEP, or TEXT
  * --ref		ID of a PATRIC genome to be used as the reference in a DEEP report
  * --home		home location of genome, to override the one in the GTO
+ * --improve	if specified, an attempt will be made to improve the genome by removing contigs
  *
  * @author Bruce Parrello
  *
@@ -63,14 +62,22 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
     @Option(name = "--clear", usage = "clear output directory before starting")
     private boolean clearOutputDir;
 
-    /** file of reference genome GTO mappings */
-    @Option(name = "--ref", usage = "ID of reference genome to use for a DEEP report")
-    private String refGenomeID;
-
     /** overriding home location of genome */
     @Option(name = "--home", usage = "home location of genome (overrides GTO value)")
     private String homeName;
 
+    /** if specified, bad contigs will be removed if the genome is contaminated but mostly complete */
+    @Option(name = "--improve", usage = "if specified, an attempt will be made to improve a bad genome")
+    private boolean improveFlag;
+
+    @Override
+    public void setDefaults() {
+        this.inFile = null;
+        this.outFile = null;
+        this.outputDir = new File(System.getProperty("user.dir"));
+        this.homeName = null;
+        this.improveFlag = false;
+    }
 
     @Override
     public void validateEvalParms() throws IOException {
@@ -86,31 +93,8 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         reporter.setOption(EvalReporter.Option.P3REPORT);
     }
 
-    public void setDefaults() {
-        this.inFile = null;
-        this.outFile = null;
-        this.outputDir = new File(System.getProperty("user.dir"));
-        this.refGenomeID = null;
-        this.homeName = null;
-    }
-
     @Override
     public void runCommand() throws Exception {
-        // Set up the reference-genome engine (if necessary).
-        if (this.getReporter() instanceof IRefReporter) {
-            IRefReporter refReporter = (IRefReporter) this.getReporter();
-            if (refGenomeID != null)
-                refReporter.setEngine(new SingleRefGenomeComputer(refGenomeID));
-            else {
-                // If we have a refGenomes.fa, we use the PATRIC-style reference genome computer.
-                File modelDir = this.getModelDir();
-                File refFasta = new File(modelDir, "refGenomes.fa");
-                if (refFasta.canRead())
-                    refReporter.setEngine(new PatricRefGenomeComputer(modelDir));
-                else
-                    log.info("No reference genomes available.");
-            }
-        }
         // Read in the role maps.
         initializeData();
         // Read in the genome.
@@ -132,13 +116,16 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         processGenome(0, genome);
         // Evaluate the consistency of the genomes.
         evaluateConsistency();
+        // Create the genome analysis.
+        var analyses = this.analyzeGenomes();
+        // TODO improve the genome (delete contigs from genome, rerun evaluation and analysis)
         // Write the results.
-        writeOutput();
+        writeOutput(analyses);
         // Now we need to write the GTO.  Get the version string.
         String version = this.getVersion();
-        // Retrieve the evaluation report.
-        GenomeStats gReport = this.getReport(0);
         log.info("Writing evaluated genome.");
+        // Retrieve the evaluation report and store it as the genome's quality information.
+        GenomeStats gReport = this.getReport(0);
         gReport.store(genome, this.getRoleDefinitions(), version, this.getOptions());
         if (this.outFile != null) {
             genome.save(this.outFile);

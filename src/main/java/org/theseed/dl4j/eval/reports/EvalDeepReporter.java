@@ -8,25 +8,14 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.theseed.counters.GenomeEval;
-import org.theseed.dl4j.eval.GenomeStats;
-import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
-import org.theseed.genome.Feature;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.compare.CompareFeatures;
 import org.theseed.p3api.P3Genome;
-import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
-import org.theseed.proteins.kmers.KmerCollectionGroup;
 import org.theseed.reports.Html;
 
-import j2html.tags.ContainerTag;
 import j2html.tags.DomContent;
 import static j2html.TagCreator.*;
 
@@ -38,18 +27,10 @@ import static j2html.TagCreator.*;
  */
 public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
 
-    /** computation object for finding the reference genome */
-    private RefGenomeComputer refEngine;
-    /** map of problematic roles to feature kmer databases */
-    private Map<String, KmerCollectionGroup> featureFinder;
     /** reference genome ID */
     private String refGenomeId;
     /** reference genome object */
     private Genome refGenomeObj;
-    /** map of bad features to closest reference features */
-    private Map<String,String> closeFeatureMap;
-    /** reference genome ID override */
-    private double maxProtDist;
     /** genome comparator */
     private CompareFeatures compareObj;
     /** orf report */
@@ -59,7 +40,6 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      * Construct a deep HTML reporting object.
      */
     public EvalDeepReporter() {
-        this.maxProtDist = RefGenomeComputer.MAX_GENOME_DIST;
         try {
             this.compareObj = new CompareFeatures();
         } catch (NoSuchAlgorithmException e) {
@@ -166,115 +146,11 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
     }
 
     /**
-     * @return a possibly-modified status for a bad feature
-     *
-     * @param feat		feature of interest
-     * @param roles		roles performed by the feature
-     */
-    @Override
-    protected FeatureStatus advancedFeatureAnalysis(Feature feat, Collection<Role> roles) {
-        // The default is not to modify the status.
-        FeatureStatus retVal = FeatureStatus.BAD;
-        // Only proceed if we have a reference genome.
-        if (this.refGenomeId != null) {
-            // Loop through the roles.
-            for (Role role : roles) {
-                String roleId = role.getId();
-                // Get the features in the reference genome with this role.
-                KmerCollectionGroup roleFeatures = this.featureFinder.get(roleId);
-                if (roleFeatures != null) {
-                    // Find the closest feature.
-                    KmerCollectionGroup.Result match = roleFeatures.getBest(feat.getProteinTranslation());
-                    if (match.getDistance() <= maxProtDist) {
-                        // We found one.  Save it and upgrade the status.
-                        this.closeFeatureMap.put(feat.getId(), match.getGroup());
-                        retVal = FeatureStatus.GOOD;
-                    }
-                }
-            }
-        }
-        return retVal;
-    }
-
-    /**
-     * This is a stub that a subclass can use to create more advanced comments about a feature.
-     *
-     * @param feat		feature of interest
-     * @param gReport	genome quality report
-     * @param role		role of interest
-     *
-     * @return text describing the feature, or NULL if there is nothing of interest
-     */
-    @Override
-    protected DomContent advancedFeatureComment(Feature feat, GenomeEval gReport, String role) {
-        DomContent retVal = null;
-        // Only proceed if we found a reference genome.
-        if (this.refGenomeId != null) {
-            // Do we have a close reference feature?
-            String closeFid = this.closeFeatureMap.get(feat.getId());
-            if (closeFid != null) {
-                // We found one. Form our message.
-                retVal = join(this.refGenomeObj.featureLink(closeFid), "in the reference genome is close, and performs the same role.");
-            }
-        }
-        return retVal;
-    }
-
-    /**
-     * This is a stub that a subclass can use to create more advanced comments about a missing role.
-     *
-     * @param listRows	an HTML list to which the advanced comment can be added
-     * @param gReport	genome quality report
-     * @param role		ID of the role of interest
-     */
-    @Override
-    protected void advancedRoleComment(ContainerTag list, GenomeEval gReport, String role) {
-        // Only proceed if a reference genome was found.
-        if (this.refGenomeId != null) {
-            // Get the features for this role from the kmer map.
-            KmerCollectionGroup roleFeatures = this.featureFinder.get(role);
-            if (roleFeatures == null || roleFeatures.size() == 0) {
-                list.with(li("No features perform this role in the reference genome."));
-            } else {
-                Collection<String> fidList = roleFeatures.getKeys();
-                list.with(li(join("This role is performed by ", this.refGenomeObj.featureListLink(fidList), "in the reference genome.")));
-            }
-        }
-    }
-
-    /**
      * Compute the reference genome and fill in the protein kmer database.
      *
      * @param gReport	quality report on the genome of interest
      */
     protected void advancedGenomeSetup(GenomeStats gReport) {
-        // Compute the reference genome.
-        this.refGenomeObj = this.refEngine.ref(gReport.getGenome());
-        if (this.refGenomeObj == null) {
-            this.refGenomeId = null;
-        } else {
-            this.refGenomeId = this.refGenomeObj.getId();
-            log.info("Analyzing reference genome {}: {}.", this.refGenomeId, refGenomeName());
-            // Create the problematic role directory.
-            Set<String> targetRoles = gReport.getProblematicRoles();
-            this.featureFinder = new HashMap<String, KmerCollectionGroup>(targetRoles.size());
-            for (String role : targetRoles) {
-                featureFinder.put(role, new KmerCollectionGroup());
-            }
-            // Get the role definitions.
-            RoleMap roleMap = this.getRoleMap();
-            // Loop through the features, putting them in the directory.
-            for (Feature feat : this.refGenomeObj.getPegs()) {
-                Collection<Role> roles = feat.getUsefulRoles(roleMap);
-                for (Role role : roles) {
-                    KmerCollectionGroup roleGroup = this.featureFinder.get(role.getId());
-                    if (roleGroup != null)
-                        roleGroup.addSequence(feat.getProteinTranslation(), feat.getId());
-                }
-            }
-        }
-        // Finally, initialize the close-feature map.
-        this.closeFeatureMap = new HashMap<String, String>();
     }
 
     /**
@@ -296,31 +172,4 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
         return this.refGenomeObj.getName();
     }
 
-    /**
-     * Set the maximum protein distance for the protein comparisons.
-     *
-     * @param newDistance	new maximum distance
-     */
-    public void setSensitivity(double newDistance) {
-        this.maxProtDist = newDistance;
-    }
-
-    /**
-     * Specify the engine for computing reference genomes.
-     *
-     * @param refEngine		object for computing reference genome IDs
-     */
-    public void setEngine(RefGenomeComputer refEngine) {
-        this.refEngine = refEngine;
-    }
-
-    /**
-     * Initialize the reference genome engine for this batch
-     *
-     * @param reports	array of evaluated genomes
-     */
-    @Override
-    public void setupGenomes(GenomeStats[] reports) {
-        this.refEngine.setupReferences(reports);
-    }
 }

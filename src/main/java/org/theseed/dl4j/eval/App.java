@@ -12,7 +12,6 @@ import org.theseed.utils.BaseProcessor;
  * p3eval	evaluate a list of PATRIC genomes
  * gto		evaluate a single GTO
  * compare	produce an ORF-by-ORF comparison of genomes with their reference genomes
- * bins		evaluate binning results
  * build	build a genome consistency evaluator from training data
  * analyze	analyze significant contributions among input features
  * p3All	create a master directory of evaluation GTOs for PATRIC prokaryotes
@@ -22,6 +21,7 @@ import org.theseed.utils.BaseProcessor;
  * rRoles	create a report on the roles present or absent in a group of genomes
  * rTrain	process a role-training file to generate presence/absence classifiers
  * rBuild	generate role-training files from a representative-genome list file
+ * p3save	save a subsystem projector file from PATRIC
  *
  */
 public class App
@@ -52,9 +52,6 @@ public class App
         case "compare" :
             processor = new CompareProcessor();
             break;
-        case "bins" :
-            processor = new BinProcessor();
-            break;
         case "build" :
             processor = new BuildProcessor();
             break;
@@ -78,6 +75,9 @@ public class App
             break;
         case "rBuild" :
             processor = new RoleBuildProcessor();
+            break;
+        case "p3save" :
+            processor = new P3SubsystemSaveProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");

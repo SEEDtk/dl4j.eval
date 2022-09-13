@@ -9,7 +9,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.eval.EvalProcessor;
-import org.theseed.dl4j.eval.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 
 /**
@@ -65,10 +65,15 @@ public abstract class RefGenomeComputer {
      */
     public Genome ref(Genome genome) {
         String genomeId = genome.getId();
-        Genome retVal = master.get(genomeId);
-        if (genome.identical(retVal)) {
-            log.info("{} is a reference for itself:  no useful information.", genomeId);
+        Genome retVal;
+        if (genomeId == null)
             retVal = null;
+        else {
+            retVal = master.get(genomeId);
+            if (genome.identical(retVal)) {
+                log.info("{} is a reference for itself:  no useful information.", genomeId);
+                retVal = null;
+            }
         }
         return retVal;
     }

@@ -8,7 +8,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.Collection;
 
-import org.theseed.dl4j.eval.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeAnalysis;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 
 /**
  * Here the reports are being produced in tab-delimited files.  The summary report name is "summary" and all files have an extension of ".tsv"
@@ -42,7 +43,7 @@ public class EvalTextReporter extends EvalReporter {
     }
 
     @Override
-    protected void writeDetails(GenomeStats gReport) throws IOException {
+    protected void writeDetails(GenomeStats gReport, GenomeAnalysis analysis) throws IOException {
         String genome = gReport.getId();
         File outFile = new File(this.getOutDir(), genome + ".tsv");
         try (PrintWriter genomeStream = new PrintWriter(outFile)) {
@@ -108,8 +109,5 @@ public class EvalTextReporter extends EvalReporter {
             this.summaryStream.close();
     }
 
-    @Override
-    public void setupGenomes(GenomeStats[] reports) {
-    }
 
 }

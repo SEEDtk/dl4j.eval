@@ -3,13 +3,13 @@
  */
 package org.theseed.dl4j.eval.reports;
 
-import org.theseed.dl4j.eval.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;
 
 /**
- * This is a simplified reference genoem ID processor that always returns the same genome ID.
+ * This is a simplified reference genome ID processor that always returns the same genome ID.
  *
  * @author Bruce Parrello
  *

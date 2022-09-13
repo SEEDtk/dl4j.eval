@@ -12,6 +12,7 @@ import java.time.Duration;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
+import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
 import org.theseed.utils.ParseFailureException;
@@ -69,10 +70,6 @@ public class EvalProcessor extends Evaluator  {
     @Option(name = "-O", aliases = { "--outDir" }, metaVar = "outDir", usage = "output directory")
     private File outputDir;
 
-    /** file of reference genome GTO mappings */
-    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
-    private File refGenomeFile;
-
     /** clear-output flag */
     @Option(name = "--clear", usage = "clear output directory before starting")
     private boolean clearOutputDir;
@@ -97,7 +94,6 @@ public class EvalProcessor extends Evaluator  {
     @Override
     public void setDefaults() {
         this.update = false;
-        this.refGenomeFile = null;
         this.outputDir = new File(System.getProperty("user.dir"));
         this.batchSize = 200;
         this.inType = GenomeSource.Type.DIR;
@@ -105,8 +101,6 @@ public class EvalProcessor extends Evaluator  {
 
     @Override
     public void runCommand() throws Exception {
-        // Set up the reference-genome engine (if necessary).
-        this.setupRefGenomeEngine(this.refGenomeFile);
         // Read in the role maps.
         initializeData();
         // Allocate our arrays.
@@ -157,8 +151,10 @@ public class EvalProcessor extends Evaluator  {
         log.info("Processing genome batch with {} genomes.", this.getGenomeCount());
         // Evaluate the consistency of the genomes.
         evaluateConsistency();
+        // Analyze the genomes.
+        var analyses = this.analyzeGenomes();
         // Write the results.
-        writeOutput();
+        writeOutput(analyses);
         // If we are updating GTOs, do it here.
         if (this.update) {
             // We need the version string.

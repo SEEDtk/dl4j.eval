@@ -104,8 +104,6 @@ public class P3EvalProcessor extends Evaluator {
 
     @Override
     public void runCommand() throws Exception {
-        // Set up the reference-genome engine (if necessary).
-        this.setupRefGenomeEngine(this.refGenomeFile);
         // Connect to PATRIC.
         this.p3 = new P3Connection();
         // Set up the output directory.
@@ -149,7 +147,8 @@ public class P3EvalProcessor extends Evaluator {
      */
     private void processBatch() throws IOException {
         this.evaluateConsistency();
-        this.writeOutput();
+        var analyses = this.analyzeGenomes();
+        this.writeOutput(analyses);
     }
 
 }

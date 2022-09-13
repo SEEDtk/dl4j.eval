@@ -6,27 +6,16 @@ package org.theseed.dl4j.eval.reports;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
-import org.theseed.counters.GenomeEval;
-import org.theseed.dl4j.eval.ContigAnalysis;
-import org.theseed.dl4j.eval.GenomeStats;
-import org.theseed.dl4j.eval.GenomeStats.FeatureStatus;
-import org.theseed.dl4j.eval.GenomeStats.ProblematicRole;
-import org.theseed.genome.Contig;
-import org.theseed.genome.Feature;
-import org.theseed.genome.Genome;
+import org.theseed.dl4j.eval.stats.GenomeAnalysis;
+import org.theseed.dl4j.eval.stats.GenomeStats;
+import org.theseed.dl4j.eval.stats.GenomeStats.ProblematicRole;
 import org.theseed.genome.compare.CompareFeatures;
-import org.theseed.locations.Location;
-import org.theseed.proteins.Role;
-import org.theseed.proteins.RoleMap;
 import org.theseed.reports.Html;
 
 import j2html.tags.ContainerTag;
@@ -78,12 +67,6 @@ public class EvalHtmlReporter extends EvalReporter {
     SortedMap<EvalSorter, DomContent> goodRows;
     /** list of bad genome table rows */
     SortedMap<EvalSorter, DomContent> badRows;
-    /** map of contig comments */
-    Map<String, ContigAnalysis> contigMap;
-
-    /** length of a short feature */
-    private static final int SHORT_FEATURE = 180;
-
 
     @Override
     protected void initialize(File modelDir) throws IOException {
@@ -116,21 +99,18 @@ public class EvalHtmlReporter extends EvalReporter {
     }
 
     @Override
-    protected void writeDetails(GenomeStats gReport) throws IOException {
+    protected void writeDetails(GenomeStats gReport, GenomeAnalysis analysis) throws IOException {
         // Get the genome ID and compute the output file name.
         String genomeId = gReport.getId();
         File outFile = this.htmlFile(genomeId);
         // Determine if we're good or poor and get the genome name.
-        String rating = (gReport.isGood() ? "good" : "poor");
+        String rating = (gReport.isMostlyGood() ?
+                (gReport.hasSsuRRna() ? "good quality" : "good quality except its SSU rRNA sequence is unknown") :
+                "poor quality");
         String seedRating = (gReport.isGoodSeed() ? "good" : "missing or invalid");
-        String ssuRating = (gReport.hasSsuRRna() ? "known" : "unknown");
         String gName = gReport.getName();
         // Perform any special genome initialization.
         this.advancedGenomeSetup(gReport);
-        // Analyze the contigs.
-        this.analyzeContigs(gReport);
-        // Analyze the features.
-        this.analyzeFeatures(gReport);
         // Create the PPR rows.
         ArrayList<DomContent> roleRows = new ArrayList<DomContent>();
         DomContent headerRow = tr(th("Role description"), th("Predicted").withClass("num"),
@@ -146,7 +126,7 @@ public class EvalHtmlReporter extends EvalReporter {
             GenomeStats.ProblematicRole ppr = gReport.getReport(role);
             int predicted = ppr.getPredicted();
             int actual = ppr.getActual();
-            DomContent comment = computeComment(gReport, ppr, role);
+            DomContent comment = computeComment(gReport, ppr, role, analysis);
             if (actual < predicted) {
                 underCount++;
             } else {
@@ -160,10 +140,16 @@ public class EvalHtmlReporter extends EvalReporter {
         Html.detailRow(detailRows, "Genome Name", td(gName));
         // Ask the subclass for any additional rows.
         advancedDetailRows(detailRows);
-        // Fill in all the quality-data statistic rows.
+        // Fill in the quality-data statistic rows.
         qualityRows(gReport, detailRows, this.hasCompleteness());
         Html.detailRow(detailRows, "Overpresent Roles", Html.numCell(overCount));
         Html.detailRow(detailRows, "Underpresent Roles", Html.numCell(underCount));
+        // Add the contig statistics.
+        Html.detailRow(detailRows, "# contigs with likely-good features", Html.numCell(analysis.getGoodContigCount()));
+        Html.detailRow(detailRows, "# contigs needed for subsystems (only)",
+                Html.numCell(analysis.getSubContigCount()));
+        int badContigs = analysis.getBadContigs().size();
+        Html.detailRow(detailRows, "# contigs that are suspicious", Html.numCell(badContigs));
         // Add the coverage if this came from a bin.
         double coverage = gReport.getGenome().getBinCoverage();
         if (coverage > 0.0) {
@@ -175,8 +161,8 @@ public class EvalHtmlReporter extends EvalReporter {
         String page = Html.page(gName + " Evaluation Report",
                     h1("Evaluation Report for " + genomeId),
                     p(String.format("This genome has an overall score of %4.2f using evaluator version %s and is of %s quality." +
-                            "The PheS protein is %s.  The SSU rRNA sequence is %s.",
-                            gReport.getScore(), this.getVersion(), rating, seedRating, ssuRating)),
+                            "The PheS protein is %s.",
+                            gReport.getScore(), this.getVersion(), rating, seedRating)),
                     div(table().with(detailRows.stream()).withClass(Html.TABLE_CLASS)).withClass("shrinker"),
                     extraHtml,
                     Html.formatTable("Potentially Problematic Roles", roleRows)
@@ -246,121 +232,36 @@ public class EvalHtmlReporter extends EvalReporter {
     }
 
     /**
-     * Determine which features are good and bad.
-     *
-     * @param gReport	quality report for this genome
-     */
-    private void analyzeFeatures(GenomeStats gReport) {
-        // Get the role map.
-        RoleMap roleDefinitions = this.getRoleMap();
-        // Loop through all the protein features in this genome.
-        for (Feature feat : gReport.getGenome().getPegs()) {
-            // Determine the status of the feature.  This also adds it to the problematic role list if it is bad.
-            Collection<Role> roles = feat.getUsefulRoles(roleDefinitions);
-            GenomeStats.FeatureStatus status = gReport.checkProblematicRoles(feat, roles);
-            if (status == GenomeStats.FeatureStatus.BAD)
-                status = this.advancedFeatureAnalysis(feat, roles);
-            // Get the feature's contig, and count the feature on it.
-            String contigId = feat.getLocation().getContigId();
-            ContigAnalysis contigData = this.contigMap.get(contigId);
-            contigData.countFeature(feat, status);
-        }
-    }
-
-    /**
-     * @return a possibly-modified status for a bad feature
-     *
-     * @param feat		feature of interest
-     * @param roles		roles performed by the feature
-     */
-    protected FeatureStatus advancedFeatureAnalysis(Feature feat, Collection<Role> roles) {
-        // The default is not to modify the status.
-        return FeatureStatus.BAD;
-    }
-
-    /**
-     * Run through all the contigs, creating the contig analysis map.
-     *
-     * @param gReport	quality report for this genome
-     */
-    private void analyzeContigs(GenomeStats gReport) {
-        Genome genome = gReport.getGenome();
-        this.contigMap = new HashMap<String, ContigAnalysis>(genome.getContigCount());
-        for (Contig contig : genome.getContigs()) {
-            ContigAnalysis analysis = new ContigAnalysis(contig, gReport);
-            this.contigMap.put(contig.getId(), analysis);
-        }
-    }
-
-    /**
      * Create the comments for this problematic role.  If the role occurs in a feature, the feature must be linked
      * in one of the comments.
      *
      * @param gReport	the evaluation report for the current genome
      * @param ppr		the problematic role object, with the features filled in
      * @param role		the ID of the role
+     * @param analysis	analysis of the current genome
      *
      * @return HTML describing the role.
      */
-    private DomContent computeComment(GenomeStats gReport, ProblematicRole ppr, String role) {
+    private DomContent computeComment(GenomeStats gReport, ProblematicRole ppr, String role, GenomeAnalysis analysis) {
         ContainerTag retVal = ul();
-        if (ppr.getActual() == 0) {
-            if (ppr.isUniversal()) {
+        int actual = ppr.getActual();
+        // Check on the universal-role status.
+        if (ppr.isUniversal()) {
+            if (actual == 0)
                 retVal.with(li("Missing universal role."));
-            }
-            // Allow the subclass to say more.
-            this.advancedRoleComment(retVal, gReport, role);
-        } else {
-            // Here we need to comment about each feature containing the role.  These are put in a bullet list.
-            if (ppr.isUniversal())
+            else if (actual > 1)
                 retVal.with(li("Redundant universal role, indicating possible contamination."));
-            for (Feature feat : ppr.getFeatures()) {
-                // Figure out where the feature is.
-                Location loc = feat.getLocation();
-                ContigAnalysis contigObject = this.contigMap.get(loc.getContigId());
-                // Get the feature's contig-related comment.
-                DomContent contigComment = contigObject.locationComment(loc);
-                // Form the full feature comment.
-                DomContent featureComment = li(join(gReport.getGenome().featureRegionLink(feat.getId()),
-                        iff(loc.getLength() < SHORT_FEATURE, text("is short and")), contigComment,
-                        this.advancedFeatureComment(feat, gReport, role)));
-                retVal.with(featureComment);
-            }
-            // Allow the subclass to say more.
-            this.advancedRoleComment(retVal, gReport, role);
         }
+        // Collect some comments about the role itself.
+        var roleComments = analysis.computeRoleComment(role, ppr.getFeatures(), ppr.getPredicted());
+        roleComments.stream().forEach(x -> retVal.with(li(x)));
         return retVal;
-    }
-
-    /**
-     * This is a stub that a subclass can use to create more advanced comments about a feature.
-     *
-     * @param feat		feature of interest
-     * @param gReport	genome quality report
-     * @param role		role of interest
-     *
-     * @return text describing the feature, or NULL if there is nothing of interest
-     */
-    protected DomContent advancedFeatureComment(Feature feat, GenomeEval gReport, String role) {
-        return null;
-    }
-
-    /**
-     * This is a stub that a subclass can use to create more advanced comments about a missing role.
-     *
-     * @param listRows	an HTML list to which the advanced comment can be added
-     * @param gReport	genome quality report
-     * @param role		role of interest
-     */
-
-    protected void advancedRoleComment(ContainerTag list, GenomeEval gReport, String role) {
     }
 
     /**
      * @return a table containing statistics about an ORF comparison
      *
      * @param comparison	ORF comparison results
-     * @return
      */
     public DomContent compareReport(CompareFeatures comparison) {
         List<DomContent> tableRows = new ArrayList<DomContent>(10);
@@ -481,10 +382,6 @@ public class EvalHtmlReporter extends EvalReporter {
         // Insure we are not holding onto the table rows.
         this.goodRows = null;
         this.badRows = null;
-    }
-
-    @Override
-    public void setupGenomes(GenomeStats[] reports) {
     }
 
 }

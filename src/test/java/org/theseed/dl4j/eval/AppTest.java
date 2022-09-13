@@ -12,6 +12,8 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.theseed.dl4j.eval.reports.RoleInfluence;
+import org.theseed.dl4j.eval.stats.GenomeStats;
+import org.theseed.dl4j.eval.stats.PhraseBuilder;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.sequence.ProteinKmers;
