@@ -7,8 +7,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.kohsuke.args4j.Option;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.eval.reports.EvalReporter;
-import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.utils.ICommand;
 
@@ -43,6 +44,12 @@ import org.theseed.utils.ICommand;
  *
  */
 public class GtoEvalProcessor extends Evaluator implements ICommand {
+
+    // FIELDS
+    /** logging facility */
+    protected static Logger log = LoggerFactory.getLogger(GtoEvalProcessor.class);
+    /** name of the subsystem projector file */
+    private File improveFile;
 
     // COMMAND LINE
 
@@ -87,6 +94,10 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         }
         // Set up the output directory.
         this.validateOutputDir(this.outputDir, this.clearOutputDir);
+        // If improvement is desired, verify we have a projector.
+        this.improveFile = new File(this.getModelDir(), "projector.ser");
+        if (this.improveFlag && ! this.improveFile.canRead())
+            throw new FileNotFoundException("Improvement requested, but subsystem projector file {} is not found or unreadable.");
         // Set the reporting options for single-genome output.
         EvalReporter reporter = this.getReporter();
         reporter.setOption(EvalReporter.Option.NOSUMMARY);
@@ -118,14 +129,32 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         evaluateConsistency();
         // Create the genome analysis.
         var analyses = this.analyzeGenomes();
-        // TODO improve the genome (delete contigs from genome, rerun evaluation and analysis)
+        // Attempt to improve the genome.
+        var gReport = this.getReport(0);
+        var analysis = analyses[0];
+        boolean improved;
+        if (! analysis.hasRefGenome()) {
+            // Can't improve unless there is a reference genome.
+            improved = false;
+            if (this.improveFlag)
+                log.info("Cannot improve genome:  no reference genome available.");
+        } else if (this.improveFlag) {
+            // Here the user wants us to try improvement.
+            improved = this.improve(genome, gReport, analysis, this.improveFile);
+            if (improved) {
+                log.info("Genome has improved.  Re-evaluating.");
+                // We have changed the genome.  Re-evaluate it.
+                processGenome(0, genome);
+                evaluateConsistency();
+                analyses = this.analyzeGenomes();
+            }
+        }
         // Write the results.
         writeOutput(analyses);
         // Now we need to write the GTO.  Get the version string.
         String version = this.getVersion();
         log.info("Writing evaluated genome.");
-        // Retrieve the evaluation report and store it as the genome's quality information.
-        GenomeStats gReport = this.getReport(0);
+        // Store the evaluation report as the genome's quality information.
         gReport.store(genome, this.getRoleDefinitions(), version, this.getOptions());
         if (this.outFile != null) {
             genome.save(this.outFile);

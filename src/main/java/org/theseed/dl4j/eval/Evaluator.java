@@ -18,9 +18,12 @@ import org.theseed.dl4j.eval.reports.RefGenomeComputer;
 import org.theseed.dl4j.eval.reports.SingleRefGenomeComputer;
 import org.theseed.dl4j.eval.stats.GenomeAnalysis;
 import org.theseed.dl4j.eval.stats.GenomeStats;
+import org.theseed.genome.AnalysisEvent;
+import org.theseed.genome.Contig;
 import org.theseed.genome.Genome;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.p3api.P3Genome;
+import org.theseed.subsystems.SubsystemProjector;
 import org.theseed.utils.ParseFailureException;
 
 /**
@@ -283,6 +286,57 @@ public abstract class Evaluator extends BaseEvaluator implements IConsistencyChe
      */
     public double getSensitivity() {
         return sensitivity;
+    }
+
+    /**
+     * Attempt to improve a genome by deleting suspicious contigs.
+     *
+     * @param genome	genome to improve
+     * @param gReport	evaluation report for the genome
+     * @param analysis	genome quality analysis
+     * @param subFile	subsystem projector file
+     *
+     * @return TRUE if the genome was modified, else FALSE
+     *
+     * @throws IOException
+     */
+    protected boolean improve(Genome genome, GenomeStats gReport, GenomeAnalysis analysis, File subFile) throws IOException {
+        boolean retVal = false;
+        // Only bother to do this if the genome is contaminated.
+        if (gReport.isClean())
+            log.info("Genome is not contaminated.  No improvement attempted.");
+        else {
+            log.info("Attempting to improve genome {}.", genome);
+            boolean subsOK = true;
+            int deletes = 0;
+            int dnaDelete = 0;
+            // Loop through the bad contigs.
+            for (Contig contig : analysis.getBadContigs()) {
+                // Delete this contig.
+                log.info("Deleting contig {}.", contig.getId());
+                boolean ok = genome.deleteContig(contig);
+                if (! ok) subsOK = false;
+                // Denote the genome has changed.
+                deletes++;
+                dnaDelete += contig.length();
+            }
+            log.info("{} contigs with total length {} deleted.", deletes, dnaDelete);
+            if (! subsOK) {
+                // Here a subsystem has gone invalid.  Re-project the subsystems.
+                log.info("Subsystems must be regenerated after improvement.  Loading projector from {}.", subFile);
+                var projector = SubsystemProjector.load(subFile);
+                log.info("Projecting subsystems onto {}.", genome);
+                projector.project(genome);
+                log.info("{} subsystems in genome.", genome.getSubsystems().size());
+            }
+            retVal = (deletes > 0);
+            if (retVal) {
+                // Since we updated the genome, we need to add an analysis event.
+                AnalysisEvent event = new AnalysisEvent(this.getCommandString(), this);
+                genome.addEvent(event);
+            }
+        }
+        return retVal;
     }
 
 }

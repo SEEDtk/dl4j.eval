@@ -110,7 +110,7 @@ public class EvalHtmlReporter extends EvalReporter {
         String seedRating = (gReport.isGoodSeed() ? "good" : "missing or invalid");
         String gName = gReport.getName();
         // Perform any special genome initialization.
-        this.advancedGenomeSetup(gReport);
+        this.advancedGenomeSetup(gReport, analysis);
         // Create the PPR rows.
         ArrayList<DomContent> roleRows = new ArrayList<DomContent>();
         DomContent headerRow = tr(th("Role description"), th("Predicted").withClass("num"),
@@ -160,7 +160,7 @@ public class EvalHtmlReporter extends EvalReporter {
         // Format the page.
         String page = Html.page(gName + " Evaluation Report",
                     h1("Evaluation Report for " + genomeId),
-                    p(String.format("This genome has an overall score of %4.2f using evaluator version %s and is of %s quality." +
+                    p(String.format("This genome has an overall score of %4.2f using evaluator version %s and is of %s." +
                             "The PheS protein is %s.",
                             gReport.getScore(), this.getVersion(), rating, seedRating)),
                     div(table().with(detailRows.stream()).withClass(Html.TABLE_CLASS)).withClass("shrinker"),
@@ -227,8 +227,9 @@ public class EvalHtmlReporter extends EvalReporter {
      * Subclasses can initialize special genome-related data structures here.
      *
      * @param gReport	quality report on the genome of interest
+     * @param analysis 	analysis of genome of interest
      */
-    protected void advancedGenomeSetup(GenomeStats gReport) {
+    protected void advancedGenomeSetup(GenomeStats gReport, GenomeAnalysis analysis) {
     }
 
     /**

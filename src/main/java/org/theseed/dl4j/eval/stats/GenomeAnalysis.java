@@ -499,4 +499,11 @@ public class GenomeAnalysis {
         return this.badContigs;
     }
 
+    /**
+     * @return TRUE if this analysis used a reference genome, else FALSE
+     */
+    public boolean hasRefGenome() {
+        return this.refGenomeObj != null;
+    }
+
 }

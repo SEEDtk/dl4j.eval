@@ -82,6 +82,7 @@ public class App
         default :
             throw new RuntimeException("Invalid command " + command + ".");
         }
+        processor.setCommandString("dl4j.eval " + command);
         boolean ok = processor.parseCommand(newArgs);
         if (ok) {
             processor.run();

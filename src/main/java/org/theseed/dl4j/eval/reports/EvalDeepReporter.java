@@ -9,6 +9,8 @@ import java.io.UnsupportedEncodingException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.theseed.dl4j.eval.stats.GenomeAnalysis;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.compare.CompareFeatures;
@@ -27,8 +29,6 @@ import static j2html.TagCreator.*;
  */
 public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
 
-    /** reference genome ID */
-    private String refGenomeId;
     /** reference genome object */
     private Genome refGenomeObj;
     /** genome comparator */
@@ -61,7 +61,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      */
     @Override
     protected void advancedDetailRows(ArrayList<DomContent> detailRows) {
-        if (this.refGenomeId != null) {
+        if (this.refGenomeObj != null) {
             Html.detailRow(detailRows, "Reference Genome", td(join(this.refGenomeObj.genomeLink(), refGenomeName())));
         }
     }
@@ -86,7 +86,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      */
     protected DomContent advancedGenomeAnalysis(GenomeStats gReport) {
         DomContent retVal = null;
-        if (this.refGenomeId != null) {
+        if (this.refGenomeObj != null) {
             // We need to compute the feature counts for this genome and the reference.
             RoleMap roleDefinitions = this.getRoleMap();
             GenomeStats.Counts newCounts = gReport.new Counts(gReport.getGenome(), roleDefinitions);
@@ -101,7 +101,8 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
             tableRows.add(compareTableRow("Features performing subsystem-related roles", newCounts.getKnownCount(), refCounts.getKnownCount()));
             tableRows.add(compareTableRow("Features performing one of the roles used in this evaluation",
                     newCounts.getUsefulCount(), refCounts.getUsefulCount()));
-            retVal = Html.formatTable("Comparison of " + gReport.getId() + " with Reference Genome " + this.refGenomeId,
+            tableRows.add(compareTableRow("Total DNA length of the genome", gReport.getDnaSize(), this.refGenomeObj.getLength()));
+            retVal = Html.formatTable("Comparison of " + gReport.getId() + " with Reference Genome " + this.refGenomeObj.getId(),
                     tableRows);
             // Check to see if we can do a comparison report.
             try {
@@ -146,11 +147,14 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
     }
 
     /**
-     * Compute the reference genome and fill in the protein kmer database.
+     * Compute the reference genome.
      *
      * @param gReport	quality report on the genome of interest
+     * @param analysis 	analysis of genome of interest
      */
-    protected void advancedGenomeSetup(GenomeStats gReport) {
+    @Override
+    protected void advancedGenomeSetup(GenomeStats gReport, GenomeAnalysis analysis) {
+        this.refGenomeObj = analysis.getRefGenome();
     }
 
     /**
