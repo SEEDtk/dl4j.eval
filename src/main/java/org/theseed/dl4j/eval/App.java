@@ -22,6 +22,7 @@ import org.theseed.utils.BaseProcessor;
  * rTrain	process a role-training file to generate presence/absence classifiers
  * rBuild	generate role-training files from a representative-genome list file
  * p3save	save a subsystem projector file from PATRIC
+ * binEval	evaluate binning results and optionally attempt to improve the bins
  *
  */
 public class App
@@ -78,6 +79,9 @@ public class App
             break;
         case "p3save" :
             processor = new P3SubsystemSaveProcessor();
+            break;
+        case "binEval" :
+            processor = new BinEvalProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");

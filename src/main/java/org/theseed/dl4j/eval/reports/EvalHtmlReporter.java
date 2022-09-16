@@ -151,7 +151,7 @@ public class EvalHtmlReporter extends EvalReporter {
         int badContigs = analysis.getBadContigs().size();
         Html.detailRow(detailRows, "# contigs that are suspicious", Html.numCell(badContigs));
         // Add the coverage if this came from a bin.
-        double coverage = gReport.getGenome().getBinCoverage();
+        double coverage = gReport.getBinCoverage();
         if (coverage > 0.0) {
             Html.detailRow(detailRows, "Mean Contig Coverage", Html.numCell(coverage));
         }

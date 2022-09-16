@@ -4,8 +4,6 @@
 package org.theseed.dl4j.eval.stats;
 
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,15 +13,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.UUID;
-
 import org.theseed.counters.GenomeEval;
+import org.theseed.genome.AnalysisEvent;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.sequence.MD5Hex;
+import org.theseed.utils.BaseProcessor;
 
 import com.github.cliftonlabs.json_simple.JsonArray;
 import com.github.cliftonlabs.json_simple.JsonObject;
@@ -81,6 +79,8 @@ public class GenomeStats extends GenomeEval {
     private String seedProt;
     /** TRUE if an SSU rRNA was found */
     private boolean hasSsuRRna;
+    /** binning coverage, or 0.0 if none */
+    private double binCoverage;
 
     /**
      * This object describes the statistics of a problematic role.
@@ -609,32 +609,16 @@ public class GenomeStats extends GenomeEval {
      * @param genome	genome into which the quality information should be stored
      * @param roles		role definition table
      * @param version	version string for the evaluation database
-     * @param options	original command-line arguments
+     * @param options	original command processor
      *
      * @throws NoSuchAlgorithmException
      * @throws UnsupportedEncodingException
      */
-    public void store(Genome genome, RoleMap roles, String version, String[] options) throws NoSuchAlgorithmException, UnsupportedEncodingException {
+    public void store(Genome genome, RoleMap roles, String version, BaseProcessor processor) throws NoSuchAlgorithmException, UnsupportedEncodingException {
         // Record this as an analysis event.
-        JsonObject gto = genome.toJson();
-        JsonArray events = (JsonArray) gto.get("analysis_events");
-        if (events == null) {
-            events = new JsonArray();
-            gto.put("analysis_events", events);
-        }
-        JsonObject thisEvent = new JsonObject().putChain("id", UUID.randomUUID().toString())
-                .putChain("tool_name", "org.theseed.dl4j.eval")
-                .putChain("execute_time", System.currentTimeMillis() / 1000.0);
-        try {
-            thisEvent.put("hostname", InetAddress.getLocalHost().getCanonicalHostName());
-        } catch (UnknownHostException e) { }
-        events.add(thisEvent);
-        // Insure there is a quality member in the GTO and get access to it.
-        JsonObject quality = (JsonObject) gto.get("quality");
-        if (quality == null) {
-            quality = new JsonObject();
-            gto.put("quality", quality);
-        }
+        genome.addEvent(new AnalysisEvent(processor.getCommandString(), processor));
+        // Get access to the quality member.
+        JsonObject quality = genome.getQuality();
         quality.put("genome_length", this.dnaSize);
         quality.put("contigs", this.contigCount);
         quality.put("plfam_cds_ratio", this.getPlfamPercent());
@@ -653,6 +637,9 @@ public class GenomeStats extends GenomeEval {
                 .putChain("N70", this.getN70()).putChain("L70", this.getL70())
                 .putChain("totlen", this.dnaSize);
         quality.put("genome_metrics", metrics);
+        // Check for binning-related data.
+        if (this.binCoverage > 0.0)
+            quality.put("bin_coverage", this.binCoverage);
         // Finally, the problematic roles report.  We create two lists in parallel, one for consistency and one for completeness.
         // We also need to count the overs and unders, and we need to save the role definitions.
         JsonObject pprComplete = new JsonObject();
@@ -801,6 +788,22 @@ public class GenomeStats extends GenomeEval {
      */
     public boolean isUseful(String role) {
         return this.usefulRoles.contains(role);
+    }
+
+    /**
+     * @return the binning coverage for this genome
+     */
+    public double getBinCoverage() {
+        return this.binCoverage;
+    }
+
+    /**
+     * Specify the binning coverage for this genome.
+     *
+     * @param covg		new binning coverage to save
+     */
+    public void setBinCoverage(double covg) {
+        this.binCoverage = covg;
     }
 
 }

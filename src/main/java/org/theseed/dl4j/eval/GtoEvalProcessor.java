@@ -155,7 +155,7 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         String version = this.getVersion();
         log.info("Writing evaluated genome.");
         // Store the evaluation report as the genome's quality information.
-        gReport.store(genome, this.getRoleDefinitions(), version, this.getOptions());
+        gReport.store(genome, this.getRoleDefinitions(), version, this);
         if (this.outFile != null) {
             genome.save(this.outFile);
         } else {

@@ -15,13 +15,18 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.CountMap;
 import org.theseed.dl4j.decision.RandomForest;
+import org.theseed.dl4j.eval.reports.RefGenomeComputer;
+import org.theseed.dl4j.eval.stats.GenomeAnalysis;
 import org.theseed.dl4j.eval.stats.GenomeStats;
+import org.theseed.genome.AnalysisEvent;
+import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
+import org.theseed.subsystems.SubsystemProjector;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
@@ -74,6 +79,10 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
     private File roleDir;
     /** array of consistency role models */
     private RandomForest[] models;
+    /** sensitivity level for protein comparisons (maximum allowable distance) */
+    private double sensitivity;
+    /** reference-genome engine */
+    private RefGenomeComputer refEngine;
 
     // COMMAND LINE OPTIONS
 
@@ -87,6 +96,7 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
     public BaseEvaluator() {
         // Initialize the flags.
         this.compList = null;
+        this.sensitivity = 0.8;
     }
 
     /**
@@ -208,22 +218,6 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
      * @param exists	TRUE if we have completeness data
      */
     protected abstract void setHaveCompleteness(boolean exists);
-
-    /**
-     * @return the list of roles in the roles-to-use file
-     *
-     * @param rolesToUseFile	file containing role IDs in the first column
-     * @throws IOException
-     */
-    public static List<String> readRolesToUse(File rolesToUseFile) throws IOException {
-        List<String> retVal = new ArrayList<String>(2800);
-        try (TabbedLineReader rolesToUse = new TabbedLineReader(rolesToUseFile, 3)) {
-            for (TabbedLineReader.Line line : rolesToUse) {
-                retVal.add(line.get(0));
-            }
-        }
-        return retVal;
-    }
 
     /**
      * Parse out and process all the data for a single genome.
@@ -483,5 +477,122 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
         return this.roleDir;
     }
 
+    /**
+     * @return the list of roles in the roles-to-use file
+     *
+     * @param rolesToUseFile	file containing role IDs in the first column
+     * @throws IOException
+     */
+    public static List<String> readRolesToUse(File rolesToUseFile) throws IOException {
+        List<String> retVal = new ArrayList<String>(2800);
+        try (TabbedLineReader rolesToUse = new TabbedLineReader(rolesToUseFile, 3)) {
+            for (TabbedLineReader.Line line : rolesToUse) {
+                retVal.add(line.get(0));
+            }
+        }
+        return retVal;
+    }
+
+    /**
+     * Get analysis of the genomes.
+     */
+    protected GenomeAnalysis[] analyzeGenomes() {
+        // Get the genome reports.
+        GenomeStats[] gReports = this.getGReports();
+        // Allocate the output array.
+        GenomeAnalysis[] retVal = new GenomeAnalysis[gReports.length];
+        // Fill in the reference genomes.
+        this.getRefEngine().setupReferences(gReports);
+        // Loop through the genome reports, creating the analyses.
+        for (int i = 0; i < gReports.length; i++) {
+            GenomeStats gReport = gReports[i];
+            Genome genome = gReport.getGenome();
+            Genome refGenome = this.getRefEngine().ref(genome);
+            log.info("Analyzing genome {}.", genome);
+            retVal[i] = new GenomeAnalysis(gReport, refGenome, this.getRoleDefinitions(), this.sensitivity);
+        }
+        return retVal;
+    }
+
+    /**
+     * @return the protein sensitivity for deep analysis
+     */
+    public double getSensitivity() {
+        return sensitivity;
+    }
+
+    /**
+     * Specify the sensitivity for protein comparisons.
+     *
+     * @param newValue	proposed new sensitivity
+     */
+    public void setSensitivity(double newValue) {
+        this.sensitivity = newValue;
+    }
+
+    /**
+     * Attempt to improve a genome by deleting suspicious contigs.
+     *
+     * @param genome	genome to improve
+     * @param gReport	evaluation report for the genome
+     * @param analysis	genome quality analysis
+     * @param subFile	subsystem projector file
+     *
+     * @return TRUE if the genome was modified, else FALSE
+     *
+     * @throws IOException
+     */
+    protected boolean improve(Genome genome, GenomeStats gReport, GenomeAnalysis analysis, File subFile) throws IOException {
+        boolean retVal = false;
+        // Only bother to do this if the genome is contaminated.
+        if (gReport.isClean())
+            log.info("Genome is not contaminated.  No improvement attempted.");
+        else {
+            log.info("Attempting to improve genome {}.", genome);
+            boolean subsOK = true;
+            int deletes = 0;
+            int dnaDelete = 0;
+            // Loop through the bad contigs.
+            for (Contig contig : analysis.getBadContigs()) {
+                // Delete this contig.
+                log.info("Deleting contig {}.", contig.getId());
+                boolean ok = genome.deleteContig(contig);
+                if (! ok) subsOK = false;
+                // Denote the genome has changed.
+                deletes++;
+                dnaDelete += contig.length();
+            }
+            log.info("{} contigs with total length {} deleted.", deletes, dnaDelete);
+            if (! subsOK) {
+                // Here a subsystem has gone invalid.  Re-project the subsystems.
+                log.info("Subsystems must be regenerated after improvement.  Loading projector from {}.", subFile);
+                var projector = SubsystemProjector.load(subFile);
+                log.info("Projecting subsystems onto {}.", genome);
+                projector.project(genome);
+                log.info("{} subsystems in genome.", genome.getSubsystems().size());
+            }
+            retVal = (deletes > 0);
+            if (retVal) {
+                // Since we updated the genome, we need to add an analysis event.
+                AnalysisEvent event = new AnalysisEvent("dl4j.eval improve", this);
+                genome.addEvent(event);
+            }
+        }
+        return retVal;
+    }
+
+    /**
+     * @return the refEngine
+     */
+    public RefGenomeComputer getRefEngine() {
+        return refEngine;
+    }
+
+    /**
+     * @param refEngine the refEngine to set
+     */
+    public void setRefEngine(RefGenomeComputer refEngine) {
+        this.refEngine = refEngine;
+    }
 
 }

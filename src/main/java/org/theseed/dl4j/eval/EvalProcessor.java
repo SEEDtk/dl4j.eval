@@ -164,7 +164,7 @@ public class EvalProcessor extends Evaluator  {
                 Genome gObject = gReport.getGenome();
                 String gId = gObject.getId();
                 log.debug("Updating GTO for {}.", gId);
-                gReport.store(gObject, this.getRoleDefinitions(), version, this.getOptions());
+                gReport.store(gObject, this.getRoleDefinitions(), version, this);
                 File outFile = new File(this.getOutDir(), gId + ".gto");
                 gObject.save(outFile);
             }
