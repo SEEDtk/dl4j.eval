@@ -1,9 +1,7 @@
 package org.theseed.dl4j.eval;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,7 +141,7 @@ public abstract class Evaluator extends BaseEvaluator implements IConsistencyChe
 
     /**
      * Validate the output directory and optionally clear it.  This also sets the directory,
-     * so it must be called after "validateParms".
+     * so it must be called after "validateOutputParms".
      *
      * @param outputDir			proposed output directory
      * @param clearOutputDir	TRUE if the directory should be cleared
@@ -151,22 +149,10 @@ public abstract class Evaluator extends BaseEvaluator implements IConsistencyChe
      * @throws IOException
      */
     protected void validateOutputDir(File outputDir, boolean clearOutputDir) throws IOException {
-        // Check the output directory.
-        if (! outputDir.exists()) {
-            log.info("Creating directory {}.", outputDir);
-            if (! outputDir.mkdirs()) {
-                throw new IOException("Could not create output directory.");
-            }
-        } else if (! outputDir.isDirectory()) {
-            throw new FileNotFoundException("Output directory " + outputDir + " is invalid.");
-        } else if (clearOutputDir) {
-            log.info("Erasing output directory.");
-            FileUtils.cleanDirectory(outputDir);
-        }
+        super.validateOutputDir(outputDir, clearOutputDir);
         this.setOutDir(outputDir);
-        log.info("Output will be in directory {}.", this.outDir);
+        log.info("Output will be to {}.", outputDir);
     }
-
     /**
      * Inform the reporting object of whether or not we have completeness data.
      *

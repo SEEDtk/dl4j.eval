@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Argument;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
@@ -83,6 +84,8 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
     private double sensitivity;
     /** reference-genome engine */
     private RefGenomeComputer refEngine;
+    /** file listing the input roles for the consistency checker */
+    private File rolesToUseFile;
 
     // COMMAND LINE OPTIONS
 
@@ -141,7 +144,36 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
         this.roleDir = new File(this.modelDir, "Roles");
         if (! this.roleDir.isDirectory())
             throw new FileNotFoundException("Roles subdirectory not found in " + this.modelDir + ".");
+        // Verify we have a roles-to-use file.
+        this.rolesToUseFile = new File(this.modelDir, "roles.to.use");
+        if (! this.rolesToUseFile.canRead())
+            throw new FileNotFoundException("Roles-to-use file not found in " + this.modelDir + " or is unreadable.");
     }
+
+    /**
+     * Validate the output directory and optionally clear it.
+     *
+     * @param outputDir			proposed output directory
+     * @param clearOutputDir	TRUE if the directory should be cleared
+     *
+     * @throws IOException
+     */
+    protected void validateOutputDir(File outputDir, boolean clearOutputDir) throws IOException {
+        // Check the output directory.
+        if (! outputDir.exists()) {
+            log.info("Creating directory {}.", outputDir);
+            if (! outputDir.mkdirs()) {
+                throw new IOException("Could not create output directory.");
+            }
+        } else if (! outputDir.isDirectory()) {
+            throw new FileNotFoundException("Output directory " + outputDir + " is invalid.");
+        } else if (clearOutputDir) {
+            log.info("Erasing output directory.");
+            FileUtils.cleanDirectory(outputDir);
+        }
+    }
+
+
 
     /**
      * Save the genome count and allocate the arrays.
@@ -167,10 +199,8 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
         // Compute the version.
         this.loadVersion();
         log.info("Evaluation database version is {}.", this.version);
-        // Read in the consistency roles.
-        File rolesToUseFile = new File(this.modelDir, "roles.to.use");
-        log.info("Reading consistency roles from {}.", rolesToUseFile);
-        this.roles = readRolesToUse(rolesToUseFile);
+        log.info("Reading consistency roles from {}.", this.rolesToUseFile);
+        this.roles = readRolesToUse(this.rolesToUseFile);
         log.info("{} roles will be used for consistency check.", this.roles.size());
         // Create the role model array.
         this.models = new RandomForest[this.roles.size()];
@@ -533,7 +563,6 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
     /**
      * Attempt to improve a genome by deleting suspicious contigs.
      *
-     * @param genome	genome to improve
      * @param gReport	evaluation report for the genome
      * @param analysis	genome quality analysis
      * @param subFile	subsystem projector file
@@ -542,12 +571,13 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
      *
      * @throws IOException
      */
-    protected boolean improve(Genome genome, GenomeStats gReport, GenomeAnalysis analysis, File subFile) throws IOException {
+    protected boolean improve(GenomeStats gReport, GenomeAnalysis analysis, File subFile) throws IOException {
         boolean retVal = false;
         // Only bother to do this if the genome is contaminated.
         if (gReport.isClean())
             log.info("Genome is not contaminated.  No improvement attempted.");
         else {
+            var genome = gReport.getGenome();
             log.info("Attempting to improve genome {}.", genome);
             boolean subsOK = true;
             int deletes = 0;
@@ -555,7 +585,7 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
             // Loop through the bad contigs.
             for (Contig contig : analysis.getBadContigs()) {
                 // Delete this contig.
-                log.info("Deleting contig {}.", contig.getId());
+                log.debug("Deleting contig {}.", contig.getId());
                 boolean ok = genome.deleteContig(contig);
                 if (! ok) subsOK = false;
                 // Denote the genome has changed.

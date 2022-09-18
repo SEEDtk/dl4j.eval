@@ -140,7 +140,7 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
                 log.info("Cannot improve genome:  no reference genome available.");
         } else if (this.improveFlag) {
             // Here the user wants us to try improvement.
-            improved = this.improve(genome, gReport, analysis, this.improveFile);
+            improved = this.improve(gReport, analysis, this.improveFile);
             if (improved) {
                 log.info("Genome has improved.  Re-evaluating.");
                 // We have changed the genome.  Re-evaluate it.

@@ -29,7 +29,9 @@ import static j2html.TagCreator.*;
  */
 public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
 
-    /** reference genome object */
+    /** current genome report */
+    private GenomeStats genomeStats;
+    /** current reference genome object */
     private Genome refGenomeObj;
     /** genome comparator */
     private CompareFeatures compareObj;
@@ -61,9 +63,11 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
      */
     @Override
     protected void advancedDetailRows(ArrayList<DomContent> detailRows) {
-        if (this.refGenomeObj != null) {
+        if (this.refGenomeObj != null)
             Html.detailRow(detailRows, "Reference Genome", td(join(this.refGenomeObj.genomeLink(), refGenomeName())));
-        }
+        double coverage = this.genomeStats.getBinCoverage();
+        if (coverage > 0.0)
+            Html.detailRow(detailRows, "Binning Coverage", td(String.format("%6.4f", coverage)).withClass("num"));
     }
 
     /**
@@ -155,6 +159,7 @@ public class EvalDeepReporter extends EvalHtmlReporter implements IRefReporter {
     @Override
     protected void advancedGenomeSetup(GenomeStats gReport, GenomeAnalysis analysis) {
         this.refGenomeObj = analysis.getRefGenome();
+        this.genomeStats = gReport;
     }
 
     /**

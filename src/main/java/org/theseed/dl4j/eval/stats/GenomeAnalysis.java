@@ -506,4 +506,11 @@ public class GenomeAnalysis {
         return this.refGenomeObj != null;
     }
 
+    /**
+     * @return TRUE if the genome is good, else FALSE
+     */
+    public boolean isGood() {
+        return this.gReport.isGood();
+    }
+
 }

@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.io.LineReader;
@@ -30,6 +32,9 @@ import com.github.cliftonlabs.json_simple.Jsoner;
 public class BinRefGenomeComputer extends RefGenomeComputer {
 
     // FIELDS
+    /** logging facility */
+    protected static Logger log = LoggerFactory.getLogger(BinRefGenomeComputer.class);
+
     /** binning sample directory */
     private File binDir;
 
@@ -157,12 +162,16 @@ public class BinRefGenomeComputer extends RefGenomeComputer {
             throw new IllegalArgumentException(String.format("%d bins presented, but only %d found in bins.json.",
                     reports.length, binMap.length));
         // Loop through the binned genomes.
-        for (int i = 0; i < reports.length; i++) {
-            GenomeStats gReport = reports[i];
+        for (GenomeStats gReport : reports) {
             if (gReport != null) {
                 Genome genome = gReport.getGenome();
                 // Get the descriptor for this bin.
-                BinData binData = binMap[i];
+                JsonObject quality = genome.getQuality();
+                // Compute the bin number.  Bin numbers are 1-based.
+                Integer binNum = (Integer) quality.get("bin_num");
+                if (binNum == null)
+                    throw new IllegalArgumentException("Genome " + genome.toString() + " is not a bin:  no bin number.");
+                BinData binData = binMap[binNum - 1];
                 // Get the reference genome ID.
                 String refGenomeId = binData.getRefGenomeId();
                 if (refGenomeId != null) {
@@ -243,8 +252,8 @@ public class BinRefGenomeComputer extends RefGenomeComputer {
      * @param binData		bin descriptor
      */
     private void storeBinData(Genome genome, BinData binData) {
-        if (genome.getContigCount() != binData.getContigCount())
-            log.warn("Genome {} does not have the same number of contigs as described in the bins.json.");
+        log.info("Genome {} has {} contigs, compared to {} in the original bin.", genome, genome.getContigCount(),
+                binData.getContigCount());
         JsonObject quality = genome.getQuality();
         quality.put("bin_ref_genome", binData.getRefGenomeId());
     }
