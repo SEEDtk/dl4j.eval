@@ -120,22 +120,31 @@ public abstract class Evaluator extends BaseEvaluator implements IConsistencyChe
         this.setSensitivity(this.sensitivityLevel);
         // Set up the reference engine.
         if (this.reporter instanceof IRefReporter) {
-            if (this.refGenomeID != null) {
-                // Here, the user has specified and explicit reference genome for everything.
-                this.setRefEngine(new SingleRefGenomeComputer(this.refGenomeID));
-                log.info("Reference genome forced to {}.", this.refGenomeID);
-            } else if (refGenomeFile != null) {
-                // Here, we have a file telling us where to find the reference genomes for each taxonomic ID.
-                this.setRefEngine(new FileRefGenomeComputer(this.refGenomeFile));
-                log.info("Reference genomes will be computed using {}.", refGenomeFile);
-            } else {
-                // Here we are pulling reference genomes from PATRIC using the model's reference-genome file.
-                this.setRefEngine(new PatricRefGenomeComputer(this.getModelDir()));
-                log.info("Reference genomes will be taken from PATRIC.");
-            }
+            computeReferenceEngine();
         } else {
             this.setRefEngine(new NullRefGenomeComputer());
             log.info("No reference genomes will be used.");
+        }
+    }
+
+    /**
+     * Compute the reference-genome engine for this process.  Subclasses can override this process.
+     *
+     * @throws IOException
+     */
+    protected void computeReferenceEngine() throws IOException {
+        if (this.refGenomeID != null) {
+            // Here, the user has specified and explicit reference genome for everything.
+            this.setRefEngine(new SingleRefGenomeComputer(this.refGenomeID));
+            log.info("Reference genome forced to {}.", this.refGenomeID);
+        } else if (refGenomeFile != null) {
+            // Here, we have a file telling us where to find the reference genomes for each taxonomic ID.
+            this.setRefEngine(new FileRefGenomeComputer(this.refGenomeFile));
+            log.info("Reference genomes will be computed using {}.", refGenomeFile);
+        } else {
+            // Here we are pulling reference genomes from PATRIC using the model's reference-genome file.
+            this.setRefEngine(new PatricRefGenomeComputer(this.getModelDir()));
+            log.info("Reference genomes will be taken from PATRIC.");
         }
     }
 

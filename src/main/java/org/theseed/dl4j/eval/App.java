@@ -7,22 +7,23 @@ import org.theseed.utils.BaseProcessor;
 /**
  * DL4J-based genome evaluation
  *
- * train	train models to predict role frequencies
- * eval		evaluate a directory of GTO files
- * p3eval	evaluate a list of PATRIC genomes
- * gto		evaluate a single GTO
- * compare	produce an ORF-by-ORF comparison of genomes with their reference genomes
- * build	build a genome consistency evaluator from training data
- * analyze	analyze significant contributions among input features
- * p3All	create a master directory of evaluation GTOs for PATRIC prokaryotes
- * comp3	produce completeness engine from master directory
- * mass		produce a summary evaluation report on a group of genomes
- * sort		sort the summary evaluation report
- * rRoles	create a report on the roles present or absent in a group of genomes
- * rTrain	process a role-training file to generate presence/absence classifiers
- * rBuild	generate role-training files from a representative-genome list file
- * p3save	save a subsystem projector file from PATRIC
- * binEval	evaluate binning results and optionally attempt to improve the bins
+ * train		train models to predict role frequencies
+ * eval			evaluate a directory of GTO files
+ * p3eval		evaluate a list of PATRIC genomes
+ * gto			evaluate a single GTO
+ * compare		produce an ORF-by-ORF comparison of genomes with their reference genomes
+ * build		build a genome consistency evaluator from training data
+ * analyze		analyze significant contributions among input features
+ * p3All		create a master directory of evaluation GTOs for PATRIC prokaryotes
+ * comp3		produce completeness engine from master directory
+ * mass			produce a summary evaluation report on a group of genomes
+ * sort			sort the summary evaluation report
+ * rRoles		create a report on the roles present or absent in a group of genomes
+ * rTrain		process a role-training file to generate presence/absence classifiers
+ * rBuild		generate role-training files from a representative-genome list file
+ * p3save		save a subsystem projector file from PATRIC
+ * binEval		evaluate binning results and optionally attempt to improve the bins
+ * binReport	produce a standalone binning summary report
  *
  */
 public class App
@@ -82,6 +83,9 @@ public class App
             break;
         case "binEval" :
             processor = new BinEvalProcessor();
+            break;
+        case "binReport" :
+            processor = new BinReportProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");

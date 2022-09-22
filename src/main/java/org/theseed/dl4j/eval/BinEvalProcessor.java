@@ -207,8 +207,10 @@ public class BinEvalProcessor extends BaseEvaluator {
             this.reporter.open(this.getVersion(), this.getRoleDefinitions(), this.getModelDir());
            // Write the reports and the genomes.
             for (int i = 0; i < nGenomes; i++) {
+                // Get the genome report and store the quality information in the output genome.
                 GenomeStats gReport = this.getGReport(i);
                 Genome genome = gReport.getGenome();
+                gReport.store(genome, this.getRoleDefinitions(), this.getVersion(), this);
                 File outFile = new File(this.outDir, genome.getId() + ".gto");
                 log.info("Writing genome {} to {}.", genome, outFile);
                 genome.save(outFile);

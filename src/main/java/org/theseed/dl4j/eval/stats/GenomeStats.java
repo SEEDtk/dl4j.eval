@@ -619,17 +619,20 @@ public class GenomeStats extends GenomeEval {
         genome.addEvent(new AnalysisEvent(processor.getCommandString(), processor));
         // Get access to the quality member.
         JsonObject quality = genome.getQuality();
-        quality.put("genome_length", this.dnaSize);
-        quality.put("contigs", this.contigCount);
-        quality.put("plfam_cds_ratio", this.getPlfamPercent());
-        quality.put("coarse_consistency", this.getCoarsePercent());
-        quality.put("contamination", this.getContaminationPercent());
-        quality.put("hypothetical_cds_ratio", this.getHypotheticalPercent());
-        quality.put("completeness", this.getCompletePercent());
-        quality.put("cds_ratio", this.getCdsPercent());
-        quality.put("fine_consistency", this.getFinePercent());
-        quality.put("completeness_group", this.getGroup());
-        quality.put("hasSsuRRna", this.hasSsuRRna());
+        quality.put(QualityKeys.GENOME_LENGTH.getKey(), this.dnaSize);
+        quality.put(QualityKeys.CONTIGS.getKey(), this.contigCount);
+        quality.put(QualityKeys.PLFAM_CDS_RATIO.getKey(), this.getPlfamPercent());
+        quality.put(QualityKeys.COARSE_CONSISTENCY.getKey(), this.getCoarsePercent());
+        quality.put(QualityKeys.CONTAMINATION.getKey(), this.getContaminationPercent());
+        quality.put(QualityKeys.HYPOTHETICAL_CDS_RATIO.getKey(), this.getHypotheticalPercent());
+        quality.put(QualityKeys.COMPLETENESS.getKey(), this.getCompletePercent());
+        quality.put(QualityKeys.CDS_RATIO.getKey(), this.getCdsPercent());
+        quality.put(QualityKeys.FINE_CONSISTENCY.getKey(), this.getFinePercent());
+        quality.put(QualityKeys.COMPLETENESS_GROUP.getKey(), this.getGroup());
+        quality.put(QualityKeys.HAS_SSU_RNA.getKey(), this.hasSsuRRna());
+        quality.put(QualityKeys.SCORE.getKey(), this.getScore());
+        quality.put(QualityKeys.HAS_SEED.getKey(), this.isGoodSeed());
+        quality.put(QualityKeys.MOSTLY_GOOD.getKey(), this.isMostlyGood());
         // Store the version string.
         quality.put("eval_version", version);
         // Genome metrics is a hash.
@@ -639,7 +642,7 @@ public class GenomeStats extends GenomeEval {
         quality.put("genome_metrics", metrics);
         // Check for binning-related data.
         if (this.binCoverage > 0.0)
-            quality.put("bin_coverage", this.binCoverage);
+            quality.put(QualityKeys.BIN_COVERAGE.getKey(), this.binCoverage);
         // Finally, the problematic roles report.  We create two lists in parallel, one for consistency and one for completeness.
         // We also need to count the overs and unders, and we need to save the role definitions.
         JsonObject pprComplete = new JsonObject();
