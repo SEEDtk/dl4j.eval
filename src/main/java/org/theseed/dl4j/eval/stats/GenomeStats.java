@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.StringUtils;
 import org.theseed.counters.GenomeEval;
 import org.theseed.genome.AnalysisEvent;
 import org.theseed.genome.Contig;
@@ -807,6 +810,38 @@ public class GenomeStats extends GenomeEval {
      */
     public void setBinCoverage(double covg) {
         this.binCoverage = covg;
+    }
+
+    /**
+     * @return a standard-format evaluation output line for this genome
+     *
+     * @param haveCompleteness		TRUE if completeness results are available
+     */
+    public String formatStandardOutputLine(boolean haveCompleteness) {
+        // Get the taxonomic lineage.
+        Genome genome = this.getGenome();
+        String taxIds = Arrays.stream(genome.getLineage()).mapToObj(n -> Integer.toString(n))
+                .collect(Collectors.joining("::"));
+        // Build the output line.
+        List<String> output = new ArrayList<String>(GenomeEval.DEFAULT_HEADERS.length);
+        output.add(this.getId());
+        output.add(this.getName());
+        output.add(String.format("%8.2f", this.getScore()));
+        output.add(this.isGood() ? "Y" : "");
+        output.add(taxIds);
+        output.add(this.isGoodSeed() ? "Y" : "");
+        output.add(this.hasSsuRRna() ? "Y" : "");
+        output.add(Integer.toString(this.getContigCount()));
+        output.add(String.format("%6.2f", this.getHypotheticalPercent()));
+        output.add(String.format("%6.2f", this.getCoarsePercent()));
+        output.add(String.format("%6.2f", this.getFinePercent()));
+        if (haveCompleteness) {
+            output.add(String.format("%6.2f", this.getCompletePercent()));
+            output.add(String.format("%6.2f", this.getContaminationPercent()));
+            output.add(this.getGroup());
+        }
+        String retVal = StringUtils.join(output, '\t');
+        return retVal;
     }
 
 }

@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Argument;
 import org.nd4j.linalg.api.ndarray.INDArray;
@@ -285,7 +284,8 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
                 gReport.completeRole(uniRole, roleCounts.getCount(uniRole));
             }
         }
-        // Store the SSU rRNA flag.
+        // Store the SSU rRNA flag.  The genome method will search for an SSU if it is not known, and eliminates the
+        // ones with too many ambiguity characters in a row.
         gReport.setHasSsuRRna(! genome.getSsuRRna().isEmpty());
         // Store the rolesActual counts.
         for (int i = 0; i < this.roles.size(); i++) {

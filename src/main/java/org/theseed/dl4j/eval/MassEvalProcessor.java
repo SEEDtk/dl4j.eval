@@ -8,16 +8,12 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
@@ -114,7 +110,7 @@ public class MassEvalProcessor extends BaseEvaluator {
             this.outStream = System.out;
             this.skipSet = Collections.emptySet();
         } else {
-            // Resume processing.  Save the roles we've already seen.
+            // Resume processing.  Save the genomes we've already seen.
             try (TabbedLineReader reader = new TabbedLineReader(this.resumeFile)) {
                 int idColIdx = reader.findField("Genome");
                 this.skipSet = new HashSet<String>(this.batchSize);
@@ -179,29 +175,7 @@ public class MassEvalProcessor extends BaseEvaluator {
         // Write the results.
         for (int i = 0; i < this.getGenomeCount(); i++) {
             GenomeStats gReport = this.getGReport(i);
-            // Get the taxonomic lineage.
-            Genome genome = gReport.getGenome();
-            String taxIds = Arrays.stream(genome.getLineage()).mapToObj(n -> Integer.toString(n))
-                    .collect(Collectors.joining("::"));
-            // Build the output line.
-            List<String> output = new ArrayList<String>(GenomeEval.DEFAULT_HEADERS.length);
-            output.add(gReport.getId());
-            output.add(gReport.getName());
-            output.add(String.format("%8.2f", gReport.getScore()));
-            output.add(gReport.isGood() ? "Y" : "");
-            output.add(taxIds);
-            output.add(gReport.isGoodSeed() ? "Y" : "");
-            output.add(gReport.hasSsuRRna() ? "Y" : "");
-            output.add(Integer.toString(gReport.getContigCount()));
-            output.add(String.format("%6.2f", gReport.getHypotheticalPercent()));
-            output.add(String.format("%6.2f", gReport.getCoarsePercent()));
-            output.add(String.format("%6.2f", gReport.getFinePercent()));
-            if (this.haveCompleteness) {
-                output.add(String.format("%6.2f", gReport.getCompletePercent()));
-                output.add(String.format("%6.2f", gReport.getContaminationPercent()));
-                output.add(gReport.getGroup());
-            }
-            String outputLine = StringUtils.join(output, '\t');
+            String outputLine = gReport.formatStandardOutputLine(this.haveCompleteness);
             this.outStream.println(outputLine);
         }
         log.info("{} genomes processed, {} per genome.", this.getGenomesProcessed(), this.getSpeed());

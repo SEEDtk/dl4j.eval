@@ -12,11 +12,12 @@ import org.theseed.utils.BaseProcessor;
  * p3eval		evaluate a list of PATRIC genomes
  * gto			evaluate a single GTO
  * compare		produce an ORF-by-ORF comparison of genomes with their reference genomes
- * build		build a genome consistency evaluator from training data
+ * build		build a genome consistency evaluator from the PATRIC CoreSEED dump
  * analyze		analyze significant contributions among input features
  * p3All		create a master directory of evaluation GTOs for PATRIC prokaryotes
- * comp3		produce completeness engine from master directory
+ * comp			produce completeness engine from master directory
  * mass			produce a summary evaluation report on a group of genomes
+ * updateMass	update a summary evaluation report on a genome master directory
  * sort			sort the summary evaluation report
  * rRoles		create a report on the roles present or absent in a group of genomes
  * rTrain		process a role-training file to generate presence/absence classifiers
@@ -86,6 +87,9 @@ public class App
             break;
         case "binReport" :
             processor = new BinReportProcessor();
+            break;
+        case "updateMass" :
+            processor = new UpdateMasterProcessor();
             break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
