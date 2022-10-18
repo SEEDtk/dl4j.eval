@@ -20,6 +20,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.counters.GenomeEval;
 import org.theseed.io.TabbedLineReader;
+import org.theseed.p3api.P3Connection;
+import org.theseed.p3api.P3TaxData;
 import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.ParseFailureException;
 
@@ -57,6 +59,8 @@ public class EvalSortProcessor extends BaseProcessor {
     private Set<String> priorityGenomes;
     /** genome evaluation statistical processor */
     private GenomeEval stats;
+    /** taxonomy map */
+    private P3TaxData taxMap;
 
     // COMMAND-LINE OPTONS
 
@@ -147,6 +151,8 @@ public class EvalSortProcessor extends BaseProcessor {
         try {
             // Create the evaluator.
             this.stats = new GenomeEval();
+            // Load the taxonomy map.
+            this.taxMap = new P3TaxData(new P3Connection());
             // We will accumulate the input lines in here in order to sort them.
             SortedSet<TabbedLineReader.Line> lineSorter = new TreeSet<TabbedLineReader.Line>(this.new LineSorter());
             // Loop through the input file.
@@ -163,13 +169,14 @@ public class EvalSortProcessor extends BaseProcessor {
             File goodFile = new File(this.outDir, this.prefix + ".good.tbl");
             try (PrintWriter allWriter = new PrintWriter(allFile);
                     PrintWriter goodWriter = new PrintWriter(goodFile)) {
-                String header = StringUtils.join(GenomeEval.DEFAULT_HEADERS, '\t');
+                String header = StringUtils.join(GenomeEval.DEFAULT_HEADERS, '\t') + "\tfamily\tgenus\tspecies";
                 allWriter.println(header);
                 goodWriter.println(header);
                 for (TabbedLineReader.Line line : lineSorter) {
-                    allWriter.println(line);
+                    String lineString = this.addTaxData(line);
+                    allWriter.println(lineString);
                     if (line.getFancyFlag(GenomeEval.GOOD_COL))
-                        goodWriter.println(line);
+                        goodWriter.println(lineString);
                 }
             }
             // Write out the statistics.
@@ -178,6 +185,36 @@ public class EvalSortProcessor extends BaseProcessor {
         } finally {
             this.inStream.close();
         }
+    }
+
+    /**
+     * Add taxonomic data to an output line and update the statistics.
+     *
+     * @param line	output line to update
+     *
+     * @return the full output line as a string
+     */
+    private String addTaxData(TabbedLineReader.Line line) {
+        // We loop through the lineage, saving the three main categories (family, genus, species).
+        String[] lineage = StringUtils.splitByWholeSeparator(line.get(GenomeEval.LINEAGE_COL), "::");
+        String genus = "";
+        String species = "";
+        String family = "";
+        for (String taxon : lineage) {
+            if (this.taxMap.checkSpecies(taxon) != 0)
+                species = taxon;
+            else if (this.taxMap.isGenus(taxon))
+                genus = taxon;
+            else if (this.taxMap.isFamily(taxon))
+                family = taxon;
+        }
+        // Update the counts.
+        if (species.isEmpty()) this.stats.count("Missing Species", 1);
+        if (genus.isEmpty()) this.stats.count("Missing Genus", 1);
+        if (family.isEmpty()) this.stats.count("Missing Family", 1);
+        // Assemble the full line.
+        String retVal = line.toString() + "\t" + family + "\t" + genus + "\t" + species;
+        return retVal;
     }
 
 }
