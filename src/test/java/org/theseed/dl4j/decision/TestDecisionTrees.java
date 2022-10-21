@@ -40,7 +40,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testDataset() throws IOException {
-        File partFile = new File("src/test/data", "partial_iris.tbl");
+        File partFile = new File("data", "partial_iris.tbl");
         List<String> labels = Arrays.asList("virginica", "versicolor", "setosa");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "species", labels,
                 Collections.emptyList())) {
@@ -62,7 +62,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testTree() throws IOException, ClassNotFoundException {
-        File partFile = new File("src/test/data", "partial_iris.tbl");
+        File partFile = new File("data", "partial_iris.tbl");
         List<String> outcomes = Arrays.asList("virginica", "versicolor", "setosa");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "species", outcomes,
                 Collections.emptyList())) {
@@ -94,7 +94,7 @@ public class TestDecisionTrees {
             for (int i = 0; i < impact.columns(); i++) {
                 log.info("Impact of {} is {}.", i, impact.getDouble(i));
             }
-            File tempFile = new File("src/test/data", "tree.ser");
+            File tempFile = new File("data", "tree.ser");
             try (FileOutputStream fileStream = new FileOutputStream(tempFile)) {
                 ObjectOutputStream outStream = new ObjectOutputStream(fileStream);
                 outStream.writeObject(tree);
@@ -115,7 +115,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testLargeDataset() throws IOException {
-        File partFile = new File("src/test/data", "thr.tbl");
+        File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "prod_level",
@@ -149,7 +149,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testRandomForest() throws IOException, ClassNotFoundException {
-        File partFile = new File("src/test/data", "thr.tbl");
+        File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "prod_level",
@@ -178,7 +178,7 @@ public class TestDecisionTrees {
             }
             log.info("FOREST: good = {}, total = {}.", good, total);
             INDArray impact = forest.computeImpact();
-            File tempFile = new File("src/test/data", "tree.ser");
+            File tempFile = new File("data", "tree.ser");
             try (FileOutputStream fileStream = new FileOutputStream(tempFile)) {
                 ObjectOutputStream outStream = new ObjectOutputStream(fileStream);
                 outStream.writeObject(forest);
@@ -198,7 +198,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testRandomForestRoles() throws IOException {
-        File partFile = new File("src/test/data", "roles.tbl");
+        File partFile = new File("data", "roles.tbl");
         List<String> outcomes = Arrays.asList("0", "1", "2", "3", "4");
         List<String> meta = Arrays.asList("genome");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "OrotPhos",
@@ -232,7 +232,7 @@ public class TestDecisionTrees {
             log.info("ROLES: good = {}, total = {}.", good, total);
             double accuracy = good / total;
             assertThat(accuracy, greaterThanOrEqualTo(0.9));
-            File tempFile = new File("src/test/data", "roles.ser");
+            File tempFile = new File("data", "roles.ser");
             try (FileOutputStream fileStream = new FileOutputStream(tempFile)) {
                 ObjectOutputStream outStream = new ObjectOutputStream(fileStream);
                 outStream.writeObject(forest);
@@ -243,7 +243,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testRandomizerMethods() throws IOException {
-        File partFile = new File("src/test/data", "thr.tbl");
+        File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "prod_level",
@@ -253,7 +253,7 @@ public class TestDecisionTrees {
             INDArray features = readSet.getFeatures();
             readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
             RandomForest.Parms parms = new RandomForest.Parms(readSet).setNumFeatures(14);
-            File ratingFile = new File("src/test/data", "ratings.tbl");
+            File ratingFile = new File("data", "ratings.tbl");
             List<String> impactCols = TabbedLineReader.readColumn(ratingFile, "1");
             List<Iterator<TreeFeatureSelectorFactory>> finders = Arrays.asList(
                     new NormalTreeFeatureSelectorFactory(142857, reader.getWidth(), parms.getNumFeatures(), parms.getNumTrees()),

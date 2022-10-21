@@ -32,7 +32,7 @@ class TestProjection {
 
     @Test
     void testPCA() throws IOException {
-        File inFile = new File("src/test/data", "continuous.tbl");
+        File inFile = new File("data", "continuous.tbl");
         try (TabbedDataSetReader inStream = new TabbedDataSetReader(inFile,
                 Arrays.asList("sample_id", "density", "production"))) {
             DataSet inData = inStream.readAll();
@@ -43,7 +43,7 @@ class TestProjection {
             INDArray projected = inFeatures.mmul(projector);
             assertThat(projected.rows(), equalTo(inFeatures.rows()));
             assertThat(projected.columns(), equalTo(2));
-            File outFile = new File("src/test/data", "distances.ser");
+            File outFile = new File("data", "distances.ser");
             int rN = projected.rows();
             int size = rN * (rN + 1) / 2;
             int used = 0;

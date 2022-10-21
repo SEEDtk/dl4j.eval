@@ -3,7 +3,6 @@
 	<name>dl4j.eval</name>
 	<comment></comment>
 	<projects>
-		<project>shared</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

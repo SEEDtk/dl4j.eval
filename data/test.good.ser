@@ -1,0 +1,29 @@
+{
+    "genetic_code":0,
+    "close_genomes":[
+        
+    ],
+    "scientific_name":null,
+    "subsystems":[
+        
+    ],
+    "home":"none",
+    "quality":{
+        "ref_genome":"1234.56"
+    },
+    "features":[
+        
+    ],
+    "analysis_events":[
+        
+    ],
+    "contigs":[
+        
+    ],
+    "ncbi_taxonomy_id":0,
+    "domain":null,
+    "ncbi_lineage":[
+        
+    ],
+    "id":"5432.10"
+}

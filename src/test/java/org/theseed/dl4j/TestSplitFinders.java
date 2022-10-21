@@ -29,7 +29,7 @@ public class TestSplitFinders {
     @Test
     public void test() throws IOException {
         SplitPointFinder finder = new SplitPointFinder.Mean();
-        File partFile = new File("src/test/data", "partial_iris.tbl");
+        File partFile = new File("data", "partial_iris.tbl");
         List<String> outcomes = Arrays.asList("virginica", "versicolor", "setosa");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "species", outcomes,
                 Collections.emptyList())) {

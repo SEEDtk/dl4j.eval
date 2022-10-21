@@ -30,7 +30,7 @@ public class AppTest
      */
     @Test
     public void testReader() throws IOException {
-        File inFile = new File("src/test/data", "iris.tbl");
+        File inFile = new File("data", "iris.tbl");
         List<String> labels = Arrays.asList("setosa", "versicolor", "virginica");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(inFile, "species", labels)) {
             reader.setBatchSize(11);
@@ -69,7 +69,7 @@ public class AppTest
             List<String> names = reader.getFeatureNames();
             assertThat(names, contains("sepal_length", "sepal_width", "petal_length", "petal_width"));
         }
-        inFile = new File("src/test/data", "samples.tbl");
+        inFile = new File("data", "samples.tbl");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(inFile, "lcol", labels,
                 Arrays.asList("mcol", "mcol2"))) {
             var names = reader.getFeatureNames();
@@ -92,7 +92,7 @@ public class AppTest
             assertThat("Wrong label aura 1 for ex2.", outputs.getDouble(1, 0), equalTo(0.0));
             assertThat("Wrong label aura 2 for ex2.", outputs.getDouble(1, 1), equalTo(0.0));
         }
-        inFile = new File("src/test/data", "regression.tbl");
+        inFile = new File("data", "regression.tbl");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(inFile, null, labels,
                 Arrays.asList("mcol", "mcol2"))) {
             reader.setRegressionColumns();
@@ -116,7 +116,7 @@ public class AppTest
             assertThat("Wrong versicolor for ex1.", outputs.getDouble(1, 1), closeTo(8.1, 0.001));
             assertThat("Wrong virginica for ex1.", outputs.getDouble(1, 2), closeTo(7.1, 0.001));
         }
-        inFile = new File("src/test/data", "predicts.tbl");
+        inFile = new File("data", "predicts.tbl");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(inFile, Arrays.asList("mcol", "mcol2"))) {
             var set1 = reader.next();
             var features = set1.getFeatures();
@@ -138,13 +138,13 @@ public class AppTest
      */
     @Test
     public void testChannelReader() throws IOException {
-        File channelFile = new File("src/test/data", "channels.tbl");
+        File channelFile = new File("data", "channels.tbl");
         Map<String, double[]> channelMap = ChannelDataSetReader.readChannelFile(channelFile);
         assertThat(collect(channelMap.get("a")), contains(1.0, 0.0, 0.0, 0.0));
         assertThat(collect(channelMap.get("X")), contains(0.25, 0.25, 0.25, 0.25));
         assertThat(collect(channelMap.get("y")), contains(0.0, 0.5, 0.0, 0.5));
-        List<String> labels = TabbedDataSetReader.readLabels(new File("src/test/data", "labels.tbl"));
-        ChannelDataSetReader reader = new ChannelDataSetReader(new File("src/test/data", "training.tbl"),
+        List<String> labels = TabbedDataSetReader.readLabels(new File("data", "labels.tbl"));
+        ChannelDataSetReader reader = new ChannelDataSetReader(new File("data", "training.tbl"),
                 "protein", labels, channelMap);
         assertThat(reader.getChannels(), equalTo(4));
         DataSet set1 = reader.next();
