@@ -153,6 +153,8 @@ public class TestDecisionTrees {
     @Test
     public void testRandomForest() throws IOException, ClassNotFoundException {
         log.info("Running testRandomForest().");
+        // For testing, drop the thread pool to 8.
+        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "8");
         File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
