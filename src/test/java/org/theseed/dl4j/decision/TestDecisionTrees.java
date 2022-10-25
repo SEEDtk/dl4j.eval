@@ -159,6 +159,7 @@ public class TestDecisionTrees {
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "prod_level",
                 outcomes, meta)) {
             reader.setBatchSize(3000);
+            log.info("Reading dataset.");
             DataSet readSet = reader.next();
             INDArray features = readSet.getFeatures();
             readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
@@ -166,10 +167,13 @@ public class TestDecisionTrees {
             RandomForest.setSeed(142857);
             Iterator<TreeFeatureSelectorFactory> factoryIter = new NormalTreeFeatureSelectorFactory(142857,
                     reader.getWidth(), parms.getNumFeatures(), parms.getNumTrees());
+            log.info("Creating random forest.");
             RandomForest forest = new RandomForest(readSet, parms, factoryIter);
             // Create a label array for output.
+            log.info("Creating predictions.");
             INDArray predictions = forest.predict(readSet.getFeatures());
             // Get the actual labels.
+            log.info("Reading expectations.");
             INDArray expectations = readSet.getLabels();
             // Compare output to actual.
             double good = 0.0;
