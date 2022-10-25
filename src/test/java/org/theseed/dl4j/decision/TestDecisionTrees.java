@@ -40,6 +40,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testDataset() throws IOException {
+        log.info("Running testDataset().");
         File partFile = new File("data", "partial_iris.tbl");
         List<String> labels = Arrays.asList("virginica", "versicolor", "setosa");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "species", labels,
@@ -62,6 +63,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testTree() throws IOException, ClassNotFoundException {
+        log.info("Running testTree().");
         File partFile = new File("data", "partial_iris.tbl");
         List<String> outcomes = Arrays.asList("virginica", "versicolor", "setosa");
         try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "species", outcomes,
@@ -115,6 +117,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testLargeDataset() throws IOException {
+        log.info("Running testLargeDataset().");
         File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
@@ -149,6 +152,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testRandomForest() throws IOException, ClassNotFoundException {
+        log.info("Running testRandomForest().");
         File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
@@ -198,6 +202,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testRandomForestRoles() throws IOException {
+        log.info("Running testRandomForestRoles().");
         File partFile = new File("data", "roles.tbl");
         List<String> outcomes = Arrays.asList("0", "1", "2", "3", "4");
         List<String> meta = Arrays.asList("genome");
@@ -243,6 +248,7 @@ public class TestDecisionTrees {
 
     @Test
     public void testRandomizerMethods() throws IOException {
+        log.info("Running testRandomizerMethods().");
         File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
