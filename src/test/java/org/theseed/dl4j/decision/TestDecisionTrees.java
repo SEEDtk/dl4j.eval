@@ -167,7 +167,8 @@ public class TestDecisionTrees {
             RandomForest.setSeed(142857);
             Iterator<TreeFeatureSelectorFactory> factoryIter = new NormalTreeFeatureSelectorFactory(142857,
                     reader.getWidth(), parms.getNumFeatures(), parms.getNumTrees());
-            log.info("Creating random forest.");
+            log.info("Creating random forest. Free memory = {} on {} processors.",
+                    Runtime.getRuntime().freeMemory(), Runtime.getRuntime().availableProcessors());
             RandomForest forest = new RandomForest(readSet, parms, factoryIter);
             // Create a label array for output.
             log.info("Creating predictions.");
