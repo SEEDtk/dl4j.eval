@@ -29,6 +29,8 @@ import org.theseed.dl4j.train.ClassPredictError;
 import org.theseed.io.TabbedLineReader;
 
 /**
+ * Use TESTPAR environment variable to set parallelism.
+ *
  * @author Bruce Parrello
  *
  */
@@ -37,6 +39,13 @@ public class TestDecisionTrees {
     /** logging facility */
     protected static Logger log = LoggerFactory.getLogger(TestDecisionTrees.class);
 
+    public TestDecisionTrees() {
+        String width = System.getenv("TESTPAR");
+        if (width == null)
+            width = "8";
+        if (! width.contentEquals("all"))
+            System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", width);
+    }
 
     @Test
     public void testDataset() throws IOException {
@@ -153,8 +162,6 @@ public class TestDecisionTrees {
     @Test
     public void testRandomForest() throws IOException, ClassNotFoundException {
         log.info("Running testRandomForest().");
-        // For testing, drop the thread pool to 8.
-        System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", "8");
         File partFile = new File("data", "thr.tbl");
         List<String> outcomes = Arrays.asList("None", "Low", "High");
         List<String> meta = Arrays.asList("sample_id", "density", "production");
