@@ -42,7 +42,7 @@ public class TestDecisionTrees {
     public TestDecisionTrees() {
         String width = System.getenv("TESTPAR");
         if (width == null)
-            width = "8";
+            width = "7";
         if (! width.contentEquals("all"))
             System.setProperty("java.util.concurrent.ForkJoinPool.common.parallelism", width);
     }
