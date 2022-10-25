@@ -216,52 +216,6 @@ public class TestDecisionTrees {
     }
 
     @Test
-    public void testRandomForestRoles() throws IOException {
-        log.info("Running testRandomForestRoles().");
-        File partFile = new File("data", "roles.tbl");
-        List<String> outcomes = Arrays.asList("0", "1", "2", "3", "4");
-        List<String> meta = Arrays.asList("genome");
-        try (TabbedDataSetReader reader = new TabbedDataSetReader(partFile, "OrotPhos",
-                outcomes, meta)) {
-            reader.setBatchSize(1000);
-            DataSet readSet = reader.next();
-            INDArray features = readSet.getFeatures();
-            readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
-            RandomForest.Parms parms = new RandomForest.Parms(readSet);
-            RandomForest.setSeed(142857);
-            Iterator<TreeFeatureSelectorFactory> factoryIter = new NormalTreeFeatureSelectorFactory(142857,
-                    reader.getWidth(), parms.getNumFeatures(), parms.getNumTrees());
-            log.info("Training role.");
-            RandomForest forest = new RandomForest(readSet, parms, factoryIter);
-            // Create a label array for output.
-            log.info("Making predictions.");
-            long start = System.currentTimeMillis();
-            INDArray predictions = forest.predict(readSet.getFeatures());
-            log.info("{} seconds per genome.", (System.currentTimeMillis() - start) / (1000.0 * readSet.numExamples()));
-            // Get the actual labels.
-            INDArray expectations = readSet.getLabels();
-            // Compare output to actual.
-            double good = 0.0;
-            double total = 0.0;
-            for (int i = 0; i < readSet.numExamples(); i++) {
-                int actual = ClassPredictError.computeBest(expectations, i);
-                int predicted = ClassPredictError.computeBest(predictions, i);
-                total++;
-                if (predicted == actual) good++;
-            }
-            log.info("ROLES: good = {}, total = {}.", good, total);
-            double accuracy = good / total;
-            assertThat(accuracy, greaterThanOrEqualTo(0.9));
-            File tempFile = new File("data", "roles.ser");
-            try (FileOutputStream fileStream = new FileOutputStream(tempFile)) {
-                ObjectOutputStream outStream = new ObjectOutputStream(fileStream);
-                outStream.writeObject(forest);
-            }
-            log.info("Role forest written to {}.", tempFile);
-        }
-    }
-
-    @Test
     public void testRandomizerMethods() throws IOException {
         log.info("Running testRandomizerMethods().");
         File partFile = new File("data", "thr.tbl");
