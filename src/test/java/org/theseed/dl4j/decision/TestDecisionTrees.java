@@ -227,7 +227,7 @@ public class TestDecisionTrees {
             DataSet readSet = reader.next();
             INDArray features = readSet.getFeatures();
             readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
-            RandomForest.Parms parms = new RandomForest.Parms(readSet).setNumFeatures(14);
+            RandomForest.Parms parms = new RandomForest.Parms(readSet).setNumFeatures(14).setNumTrees(10);
             File ratingFile = new File("data", "ratings.tbl");
             List<String> impactCols = TabbedLineReader.readColumn(ratingFile, "1");
             List<Iterator<TreeFeatureSelectorFactory>> finders = Arrays.asList(
