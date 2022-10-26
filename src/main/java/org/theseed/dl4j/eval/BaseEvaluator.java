@@ -530,11 +530,11 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
         // Get the genome reports.
         GenomeStats[] gReports = this.getGReports();
         // Allocate the output array.
-        GenomeAnalysis[] retVal = new GenomeAnalysis[gReports.length];
+        GenomeAnalysis[] retVal = new GenomeAnalysis[this.nGenomes];
         // Fill in the reference genomes.
         this.getRefEngine().setupReferences(gReports);
         // Loop through the genome reports, creating the analyses.
-        for (int i = 0; i < gReports.length; i++) {
+        for (int i = 0; i < this.nGenomes; i++) {
             GenomeStats gReport = gReports[i];
             Genome genome = gReport.getGenome();
             Genome refGenome = this.getRefEngine().ref(genome);

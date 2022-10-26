@@ -13,8 +13,10 @@ public class NullRefGenomeComputer extends RefGenomeComputer {
 
     @Override
     protected void initialize(GenomeStats[] reports) {
-        for (GenomeStats report : reports)
-            this.put(report.getId(), null);
+        for (GenomeStats report : reports) {
+            if (report != null)
+                this.put(report.getId(), null);
+        }
     }
 
 }
