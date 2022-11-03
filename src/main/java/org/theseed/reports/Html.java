@@ -12,6 +12,8 @@ import j2html.tags.ContainerTag;
 import j2html.tags.DomContent;
 
 /**
+ * These are static methods to help when building web pages.
+ *
  * @author Bruce Parrello
  *
  */
