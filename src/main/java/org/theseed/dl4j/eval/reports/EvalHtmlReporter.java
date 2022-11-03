@@ -150,6 +150,7 @@ public class EvalHtmlReporter extends EvalReporter {
                 Html.numCell(analysis.getSubContigCount()));
         int badContigs = analysis.getBadContigs().size();
         Html.detailRow(detailRows, "# contigs that are suspicious", Html.numCell(badContigs));
+        // TODO produce suspicious-contig table
         // Add the coverage if this came from a bin.
         double coverage = gReport.getBinCoverage();
         if (coverage > 0.0) {
