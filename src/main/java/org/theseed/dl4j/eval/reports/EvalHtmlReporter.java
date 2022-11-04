@@ -10,11 +10,14 @@ import java.util.List;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.FileUtils;
+import org.theseed.dl4j.eval.stats.ContigAnalysis;
 import org.theseed.dl4j.eval.stats.GenomeAnalysis;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.dl4j.eval.stats.GenomeStats.ProblematicRole;
+import org.theseed.genome.Contig;
 import org.theseed.genome.compare.CompareFeatures;
 import org.theseed.reports.Html;
 
@@ -150,7 +153,24 @@ public class EvalHtmlReporter extends EvalReporter {
                 Html.numCell(analysis.getSubContigCount()));
         int badContigs = analysis.getBadContigs().size();
         Html.detailRow(detailRows, "# contigs that are suspicious", Html.numCell(badContigs));
-        // TODO produce suspicious-contig table
+        // If there are suspicious contigs, put them in a table.
+        DomContent contigTable = null;
+        if (badContigs > 0) {
+            // Get the list of analysis objects for the bad contigs.
+            List<ContigAnalysis> badContigList = analysis.getBadContigs().stream().map(x -> analysis.getContigData(x.getId()))
+                    .sorted().collect(Collectors.toList());
+            // Build a list of table rows for the bad contig table.
+            var contigRows = new ArrayList<DomContent>(badContigs + 1);
+            contigRows.add(tr(th("Contig Id"), th("Length").withClass("num"), th("CDS Count").withClass("num"),
+                    th("Bad Features").withClass("num")));
+            for (var badContig : badContigList) {
+                Contig badContigActual = badContig.getContig();
+                contigRows.add(tr(td(badContigActual.getId()), Html.numCell(badContigActual.length()),
+                        Html.numCell(badContig.getPegCount()), Html.numCell(badContig.getBadFeatures().size())));
+            }
+            contigTable = join(h2("Suspicious Contigs"),
+                    div(table().with(contigRows.stream()).withClass(Html.TABLE_CLASS)).withClass("shrinker"));
+        }
         // Add the coverage if this came from a bin.
         double coverage = gReport.getBinCoverage();
         if (coverage > 0.0) {
@@ -165,6 +185,7 @@ public class EvalHtmlReporter extends EvalReporter {
                             "The PheS protein is %s.",
                             gReport.getScore(), this.getVersion(), rating, seedRating)),
                     div(table().with(detailRows.stream()).withClass(Html.TABLE_CLASS)).withClass("shrinker"),
+                    contigTable,
                     extraHtml,
                     Html.formatTable("Potentially Problematic Roles", roleRows)
                 );

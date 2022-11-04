@@ -248,8 +248,9 @@ public class GenomeAnalysis {
                         }
                     }
                 }
-                // Check for subsystem lock.
-                // Add the feature to the feature map and count it in the contig.
+                // Count the feature as a peg.
+                contig.countPeg();
+                // Add the feature to the feature map and count its status in the contig.
                 this.featureMap.put(fid, new FeatureAnalysis(feat, status, refId, contig.getContig()));
                 if (status != FeatureStatus.GOOD && feat.isSubsystemLocked())
                     contig.countSubLock();

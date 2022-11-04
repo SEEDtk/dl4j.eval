@@ -15,11 +15,12 @@ import java.util.Set;
 
 /**
  * This object contains analytical information about a contig, and is used to generate comments about it.
+ * Contig analysis objects are sortable by contig ID.
  *
  * @author Bruce Parrello
  *
  */
-public class ContigAnalysis {
+public class ContigAnalysis implements Comparable<ContigAnalysis> {
 
     // FIELDS
     /** the base contig being analyzed */
@@ -32,6 +33,8 @@ public class ContigAnalysis {
     private Set<Feature> badFeatures;
     /** number of features that are subsystem-locked */
     private int subFeatures;
+    /** number of pegs */
+    private int pegCount;
 
     private static final int CONTIG_EDGE = 6;
 
@@ -46,6 +49,7 @@ public class ContigAnalysis {
         this.tooShort = (contig.length() < gReport.getN70());
         this.goodFeatures = 0;
         this.subFeatures = 0;
+        this.pegCount = 0;
         this.badFeatures = new HashSet<Feature>();
     }
 
@@ -66,6 +70,20 @@ public class ContigAnalysis {
         default:
             break;
         }
+    }
+
+    /**
+     * Count a peg on this contig.
+     */
+    public void countPeg() {
+        this.pegCount++;
+    }
+
+    /**
+     * Return the number of pegs on this contig.
+     */
+    public int getPegCount() {
+        return this.pegCount;
     }
 
     /**
@@ -143,6 +161,11 @@ public class ContigAnalysis {
      */
     public int getSubCount() {
         return this.subFeatures;
+    }
+
+    @Override
+    public int compareTo(ContigAnalysis o) {
+        return this.contig.getId().compareTo(o.contig.getId());
     }
 
 }

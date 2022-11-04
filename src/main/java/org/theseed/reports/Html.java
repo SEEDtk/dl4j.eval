@@ -177,7 +177,9 @@ public class Html {
     }
 
     /**
-     * Create a web page with the specified title and body components.
+     * Create a web page with the specified title and body components.  Note that NULL values
+     * in the body items are simply ignored by the underlying code, so they may be freely used as
+     * placeholders for empty sections.
      *
      * @param pTitle	title for the page
      * @param bodyItems	one or more items for the body of the page
