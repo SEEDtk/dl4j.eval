@@ -65,7 +65,7 @@ public class EvalSortProcessor extends BaseProcessor {
     // COMMAND-LINE OPTONS
 
     /** input file (if not STDIN) */
-    @Option(name = "-i", aliases = { "--input" }, usage = "input file (if not STDIN")
+    @Option(name = "-i", aliases = { "--input" }, usage = "input file (if not STDIN)")
     private File inFile;
 
     /** priority genome file */
