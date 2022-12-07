@@ -9,7 +9,9 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -29,7 +31,7 @@ import com.github.cliftonlabs.json_simple.JsonObject;
 
 /**
  * This command evaluates binning results.  The binning directory must contain a bins.json describing the bins, and a series
- * of Bin.X.XXXXXX.genome files containing the annotated bins.  The bins.json file will be used to associate reference genomes
+ * of bin.X.XXXXXX.gto files containing the annotated bins.  The bins.json file will be used to associate reference genomes
  * with the bin genomes, which will then be loaded from the XXXXXX.X.json files in the binning directory.  The bins will then
  * be deep-evaluated, and optionally improved.  The output directory will contain the evaluated/improved bins as GTOs plus
  * the HTML evaluation reports.  Since we know all the reference genomes are in BV-BRC, many simplifying assumptions can be
@@ -83,7 +85,7 @@ public class BinEvalProcessor extends BaseEvaluator {
     private static class GenomeFileFilter implements FilenameFilter {
 
         /** file name pattern for bin files */
-        private static final Pattern BIN_FILE_NAME = Pattern.compile("Bin\\.\\d+\\.\\d+\\.genome");
+        private static final Pattern BIN_FILE_NAME = Pattern.compile("[Bb]in\\.\\d+\\.\\d+\\.(?:genome|gto)");
 
         @Override
         public boolean accept(File dir, String name) {
@@ -146,6 +148,8 @@ public class BinEvalProcessor extends BaseEvaluator {
         // This number corresponds to the bin's position in the bins.json file.
         log.info("Loading bin genomes from {}.", this.binDir);
         List<Genome> binGenomes = new ArrayList<Genome>(this.binFiles.length);
+        // Remember the names of the files for the genomes.
+        Map<String, File> fileMap = new HashMap<String, File>(this.binFiles.length * 4 / 3 + 1);
         for (File binFile : this.binFiles) {
             // Compute the bin number.  The second piece is the bin number as a string.  This is enforced by the
             // file name pattern in the filter.
@@ -154,6 +158,7 @@ public class BinEvalProcessor extends BaseEvaluator {
             // Read the genome.
             Genome binGenome = new Genome(binFile);
             log.info("Bin {} is {}.", binNum, binGenome);
+            fileMap.put(binGenome.getId(), binFile);
             // Set the bin number and denote the genome is BV-BRC.
             JsonObject quality = binGenome.getQuality();
             quality.put("bin_num", binNum);
@@ -211,7 +216,7 @@ public class BinEvalProcessor extends BaseEvaluator {
                 GenomeStats gReport = this.getGReport(i);
                 Genome genome = gReport.getGenome();
                 gReport.store(genome, this.getRoleDefinitions(), this.getVersion(), this);
-                File outFile = new File(this.outDir, genome.getId() + ".gto");
+                File outFile = fileMap.get(genome.getId());
                 log.info("Writing genome {} to {}.", genome, outFile);
                 genome.save(outFile);
                 this.reporter.writeGenome(gReport, analyses[i]);

@@ -27,6 +27,7 @@ public enum QualityKeys implements JsonKey {
     HAS_SEED(false),
     MOSTLY_GOOD(false),
     BIN_COVERAGE(0.0),
+    EVAL_GOOD(false),
     BIN_REF_GENOME(null);
 
     /** default value */

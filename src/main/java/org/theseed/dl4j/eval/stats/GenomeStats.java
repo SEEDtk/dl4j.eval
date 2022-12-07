@@ -636,6 +636,7 @@ public class GenomeStats extends GenomeEval {
         quality.put(QualityKeys.SCORE.getKey(), this.getScore());
         quality.put(QualityKeys.HAS_SEED.getKey(), this.isGoodSeed());
         quality.put(QualityKeys.MOSTLY_GOOD.getKey(), this.isMostlyGood());
+        quality.put(QualityKeys.EVAL_GOOD.getKey(), this.isGood());
         // Store the version string.
         quality.put("eval_version", version);
         // Genome metrics is a hash.
