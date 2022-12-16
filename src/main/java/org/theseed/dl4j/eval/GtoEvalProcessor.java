@@ -9,7 +9,6 @@ import java.io.IOException;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.theseed.dl4j.eval.reports.BinRefGenomeComputer;
 import org.theseed.dl4j.eval.reports.EvalReporter;
 import org.theseed.genome.Genome;
 import org.theseed.utils.ICommand;
@@ -40,7 +39,6 @@ import org.theseed.utils.ICommand;
  * --ref		ID of a PATRIC genome to be used as the reference in a DEEP report
  * --home		home location of genome, to override the one in the GTO
  * --improve	if specified, an attempt will be made to improve the genome by removing contigs
- * --bins		if specified, a bins.json file that can be used to compute coverage
  * --p3			force the HTML file name to GenomeReport.html
  *
  * @author Bruce Parrello
@@ -80,10 +78,6 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
     @Option(name = "--improve", usage = "if specified, an attempt will be made to improve a bad genome")
     private boolean improveFlag;
 
-    /** if specified, the location of a bins.json file that can be used to compute coverage and reference genomes */
-    @Option(name = "--bins", usage = "if specified, the output (bins.json) file from a binning run used to create the genome")
-    private File binFile;
-
     /** if specified, the HTML file name will be forced to GenomeReport.html */
     @Option(name = "--p3", usage = "if specified, the BV-BRC html output file name will be used")
     private boolean p3Flag;
@@ -95,7 +89,6 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         this.outputDir = new File(System.getProperty("user.dir"));
         this.homeName = null;
         this.improveFlag = false;
-        this.binFile = null;
         this.p3Flag = false;
     }
 
@@ -111,9 +104,6 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
         this.improveFile = new File(this.getModelDir(), "projector.ser");
         if (this.improveFlag && ! this.improveFile.canRead())
             throw new FileNotFoundException("Improvement requested, but subsystem projector file {} is not found or unreadable.");
-        // Validate the bins.json file.
-        if (this.binFile != null && ! this.binFile.canRead())
-            throw new FileNotFoundException("Binning analysis file " + this.binFile + " is not found or unreadable.");
         // Set the reporting options for single-genome output.
         EvalReporter reporter = this.getReporter();
         reporter.setOption(EvalReporter.Option.NOSUMMARY);
@@ -167,11 +157,6 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
                 // Refresh the genome report.
                 gReport = this.getGReport(0);
             }
-        }
-        // If we are binning, store the coverage and the reference genome ID for the report.
-        if (this.binFile != null) {
-            double coverage = BinRefGenomeComputer.getCoverage(genome, this.binFile);
-            BinRefGenomeComputer.storeBinData(genome, analysis.getRefGenomeId(), coverage);
         }
         // Write the results.
         writeOutput(analyses);
