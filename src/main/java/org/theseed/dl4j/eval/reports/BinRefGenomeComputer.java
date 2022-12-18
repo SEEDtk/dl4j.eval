@@ -9,9 +9,9 @@ import java.io.UncheckedIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.eval.stats.GenomeStats;
-import org.theseed.dl4j.eval.stats.QualityKeys;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeDirectory;
+import org.theseed.genome.QualityKeys;
 import org.theseed.bins.Bin;
 import org.theseed.bins.BinGroup;
 

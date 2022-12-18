@@ -21,6 +21,7 @@ import org.theseed.genome.AnalysisEvent;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
+import org.theseed.genome.QualityKeys;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.sequence.MD5Hex;
