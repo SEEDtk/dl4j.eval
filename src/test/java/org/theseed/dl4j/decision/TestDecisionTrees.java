@@ -81,9 +81,10 @@ public class TestDecisionTrees {
             DataSet readSet = reader.next();
             INDArray features = readSet.getFeatures();
             readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
+            int[] idxes = RandomForest.getUsefulFeatures(readSet);
             RandomForest.Parms parms = new RandomForest.Parms();
             Iterator<TreeFeatureSelectorFactory> factoryIter = new NormalTreeFeatureSelectorFactory(142857,
-                    reader.getWidth(), 4, parms.getNumTrees());
+                    idxes, 4, parms.getNumTrees());
             DecisionTree tree = new DecisionTree(readSet, parms, factoryIter.next());
             // Create a label array for output.
             INDArray predictions = Nd4j.zeros(readSet.numExamples(), readSet.numOutcomes());
@@ -136,9 +137,10 @@ public class TestDecisionTrees {
             DataSet readSet = reader.next();
             INDArray features = readSet.getFeatures();
             readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
+            int[] idxes = RandomForest.getUsefulFeatures(readSet);
             RandomForest.Parms parms = new RandomForest.Parms(readSet).setNumFeatures(readSet.numInputs());
             Iterator<TreeFeatureSelectorFactory> factoryIter = new NormalTreeFeatureSelectorFactory(142857,
-                    reader.getWidth(), parms.getNumFeatures(), parms.getNumTrees());
+                    idxes, parms.getNumFeatures(), parms.getNumTrees());
             DecisionTree tree = new DecisionTree(readSet, parms, factoryIter.next());
             // Create a label array for output.
             INDArray predictions = Nd4j.zeros(readSet.numExamples(), readSet.numOutcomes());
@@ -172,10 +174,11 @@ public class TestDecisionTrees {
             DataSet readSet = reader.next();
             INDArray features = readSet.getFeatures();
             readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
+            int[] idxes = RandomForest.getUsefulFeatures(readSet);
             RandomForest.Parms parms = new RandomForest.Parms(readSet);
             RandomForest.setSeed(142857);
             Iterator<TreeFeatureSelectorFactory> factoryIter = new NormalTreeFeatureSelectorFactory(142857,
-                    reader.getWidth(), parms.getNumFeatures(), parms.getNumTrees());
+                    idxes, parms.getNumFeatures(), parms.getNumTrees());
             log.info("Creating random forest. Free memory = {} on {} processors.  Width = {}.",
                     Runtime.getRuntime().freeMemory(), Runtime.getRuntime().availableProcessors(),
                     reader.getWidth());
@@ -227,11 +230,12 @@ public class TestDecisionTrees {
             DataSet readSet = reader.next();
             INDArray features = readSet.getFeatures();
             readSet.setFeatures(features.reshape(features.size(0), features.size(3)));
+            int[] idxes = RandomForest.getUsefulFeatures(readSet);
             RandomForest.Parms parms = new RandomForest.Parms(readSet).setNumFeatures(14).setNumTrees(10);
             File ratingFile = new File("data", "ratings.tbl");
             List<String> impactCols = TabbedLineReader.readColumn(ratingFile, "1");
             List<Iterator<TreeFeatureSelectorFactory>> finders = Arrays.asList(
-                    new NormalTreeFeatureSelectorFactory(142857, reader.getWidth(), parms.getNumFeatures(), parms.getNumTrees()),
+                    new NormalTreeFeatureSelectorFactory(142857, idxes, parms.getNumFeatures(), parms.getNumTrees()),
                     new RootedTreeFeatureSelectorFactory(142857, reader.getFeatureNames(),
                             impactCols, parms.getNumFeatures(), parms.getNumTrees()));
             for (Method method : Method.values()) {
