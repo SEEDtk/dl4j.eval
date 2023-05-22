@@ -5,9 +5,11 @@
     <artifactId>dl4j.eval</artifactId>
 
     <name>dl4j.eval</name>
+    <description>Genome Evaluation Utilities</description>
     <url>https://www.patricbrc.org</url>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
     </properties>
@@ -119,4 +121,13 @@
             </plugin>
         </plugins>
     </build>
+
+  <reporting>
+    <plugins>
+      <plugin>
+        <artifactId>maven-project-info-reports-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </reporting>
+
 </project>
