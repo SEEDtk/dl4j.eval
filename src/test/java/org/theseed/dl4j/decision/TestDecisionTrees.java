@@ -182,7 +182,7 @@ public class TestDecisionTrees {
             log.info("Creating random forest. Free memory = {} on {} processors.  Width = {}.",
                     Runtime.getRuntime().freeMemory(), Runtime.getRuntime().availableProcessors(),
                     reader.getWidth());
-            RandomForest forest = new RandomForest(readSet, parms, factoryIter);
+            RandomForest forest = new RandomForest(readSet, parms, factoryIter, null);
             // Create a label array for output.
             log.info("Creating predictions.");
             INDArray predictions = forest.predict(readSet.getFeatures());
@@ -242,7 +242,7 @@ public class TestDecisionTrees {
                 for (Iterator<TreeFeatureSelectorFactory> finder : finders) {
                     parms.setMethod(method);
                     log.info("Processing method {} with finder {}.", method, finder);
-                    RandomForest forest = new RandomForest(readSet, parms, finder);
+                    RandomForest forest = new RandomForest(readSet, parms, finder, null);
                     // Create a label array for output.
                     INDArray predictions = forest.predict(readSet.getFeatures());
                     // Get the actual labels.
