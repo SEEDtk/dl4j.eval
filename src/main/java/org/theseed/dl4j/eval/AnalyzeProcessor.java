@@ -15,10 +15,10 @@ import org.kohsuke.args4j.Argument;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
 import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.eval.reports.RoleInfluence;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.utils.BaseProcessor;
 
 /**
  * This command looks at a directory built by BuildProcessor and determines which input roles had the most impact on the outputs.

@@ -12,10 +12,10 @@ import java.time.Duration;
 
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
-import org.theseed.utils.ParseFailureException;
 
 
 /**

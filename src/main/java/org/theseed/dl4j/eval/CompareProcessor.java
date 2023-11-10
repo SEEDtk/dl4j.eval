@@ -23,6 +23,7 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
 import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -32,7 +33,7 @@ import org.theseed.genome.compare.CompareFeatures;
 import org.theseed.locations.Location;
 import org.theseed.reports.Html;
 import org.theseed.sequence.MD5Hex;
-import org.theseed.utils.BaseProcessor;
+
 import j2html.tags.ContainerTag;
 import j2html.tags.DomContent;
 import static j2html.TagCreator.*;

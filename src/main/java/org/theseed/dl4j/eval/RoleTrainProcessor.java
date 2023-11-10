@@ -27,13 +27,13 @@ import org.nd4j.linalg.dataset.DataSet;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.dl4j.TabbedDataSetReader;
 import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.train.ClassPredictError;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.RoleMap;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command builds role classifiers for the roles in a set of genomes.  The input directory

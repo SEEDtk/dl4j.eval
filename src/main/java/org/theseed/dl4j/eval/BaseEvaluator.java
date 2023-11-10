@@ -13,6 +13,8 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.counters.CountMap;
 import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.eval.reports.RefGenomeComputer;
@@ -27,8 +29,6 @@ import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.subsystems.SubsystemProjector;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  *

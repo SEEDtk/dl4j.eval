@@ -10,10 +10,10 @@ import java.io.File;
 import java.io.IOException;
 
 import org.junit.jupiter.api.Test;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * @author Bruce Parrello

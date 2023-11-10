@@ -9,9 +9,9 @@ import java.io.IOException;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.ICommand;
 import org.theseed.dl4j.eval.reports.EvalReporter;
 import org.theseed.genome.Genome;
-import org.theseed.utils.ICommand;
 
 /**
  * This processor evaluates a single GTO.  This is less efficient than evaluating in a batch, but it

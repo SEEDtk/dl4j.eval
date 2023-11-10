@@ -15,9 +15,9 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.dl4j.train.ClassPredictError;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * @author Bruce Parrello

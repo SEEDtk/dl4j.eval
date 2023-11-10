@@ -15,6 +15,7 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.counters.CountMap;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -23,7 +24,6 @@ import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
 import org.theseed.utils.BaseReportProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command will create a report of the role occurrences in the genomes found in a genome source.

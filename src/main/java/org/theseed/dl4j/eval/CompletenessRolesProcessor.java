@@ -21,6 +21,8 @@ import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.counters.CountMap;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
@@ -32,9 +34,7 @@ import org.theseed.proteins.RoleMatrix;
 import org.theseed.proteins.kmers.reps.RepGenome;
 import org.theseed.proteins.kmers.reps.RepGenomeDb;
 import org.theseed.sequence.ProteinKmers;
-import org.theseed.utils.BaseProcessor;
 import org.theseed.utils.FloatList;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This class processes a master genome directory and a genome quality report file to create a

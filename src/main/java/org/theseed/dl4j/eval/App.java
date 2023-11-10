@@ -2,7 +2,7 @@ package org.theseed.dl4j.eval;
 
 import java.util.Arrays;
 
-import org.theseed.utils.BaseProcessor;
+import org.theseed.basic.BaseProcessor;
 
 /**
  * DL4J-based genome evaluation

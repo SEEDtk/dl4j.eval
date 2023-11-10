@@ -9,10 +9,10 @@ import java.io.IOException;
 import org.kohsuke.args4j.Argument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3SubsystemProjector;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This is a simple command that saves a subsystem projector file downloaded from PATRIC.  This file can

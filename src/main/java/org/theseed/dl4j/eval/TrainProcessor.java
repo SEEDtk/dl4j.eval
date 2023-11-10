@@ -20,14 +20,14 @@ import org.kohsuke.args4j.Option;
 import org.nd4j.linalg.dataset.DataSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.dl4j.decision.RandomForest;
 import org.theseed.dl4j.decision.RandomForest.Method;
 import org.theseed.dl4j.decision.RandomForest.Parms;
 import org.theseed.io.ParmDescriptor;
 import org.theseed.io.ParmFile;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This object trains classifiers for genome annotation consistency evaluation.  The input file has role IDs along the top and a genome ID

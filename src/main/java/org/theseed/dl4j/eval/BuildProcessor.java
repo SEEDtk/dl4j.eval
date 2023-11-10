@@ -20,6 +20,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
+import org.theseed.basic.BaseProcessor;
+import org.theseed.basic.ParseFailureException;
 import org.theseed.counters.CountMap;
 import org.theseed.counters.Shuffler;
 import org.theseed.genome.Feature;
@@ -29,8 +31,6 @@ import org.theseed.io.MarkerFile;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.RoleMap;
 import org.theseed.subsystems.SubsystemRoleFactory;
-import org.theseed.utils.BaseProcessor;
-import org.theseed.utils.ParseFailureException;
 
 /**
  * This command reads a PATRIC CoreSEED dump and builds training files.  The PATRIC CoreSEED dump consists
