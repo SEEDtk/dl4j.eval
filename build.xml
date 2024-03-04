@@ -58,7 +58,7 @@
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/net/ericaro/neoitertools/1.0.0/neoitertools-1.0.0.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-common/1.0.0-M1.1/nd4j-common-1.0.0-M1.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/guava/1.0.0-M1.1/guava-1.0.0-M1.1.jar"/>
-            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-compress/1.18/commons-compress-1.18.jar"/>
+            <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/apache/commons/commons-compress/1.26.0/commons-compress-1.26.0.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-api/1.0.0-M1.1/nd4j-native-api-1.0.0-M1.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-preset/1.0.0-M1.1/nd4j-native-preset-1.0.0-M1.1.jar"/>
             <zipfileset excludes="META-INF/*.SF" src="${env.HOME}/.m2/repository/org/nd4j/nd4j-native-preset/1.0.0-M1.1/nd4j-native-preset-1.0.0-M1.1-windows-x86_64.jar"/>
