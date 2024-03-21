@@ -144,31 +144,32 @@ public class AppTest
         assertThat(collect(channelMap.get("X")), contains(0.25, 0.25, 0.25, 0.25));
         assertThat(collect(channelMap.get("y")), contains(0.0, 0.5, 0.0, 0.5));
         List<String> labels = TabbedDataSetReader.readLabels(new File("data", "labels.tbl"));
-        ChannelDataSetReader reader = new ChannelDataSetReader(new File("data", "training.tbl"),
-                "protein", labels, channelMap);
-        assertThat(reader.getChannels(), equalTo(4));
-        DataSet set1 = reader.next();
-        INDArray features = set1.getFeatures();
-        INDArray outputs = set1.getLabels();
-        assertThat(set1.numExamples(), equalTo(8));
-        assertThat(features.getDouble(0, 0, 0, 0), equalTo(0.0));  // c in example 1 position 1
-        assertThat(features.getDouble(0, 1, 0, 0), equalTo(1.0));
-        assertThat(features.getDouble(0, 2, 0, 0), equalTo(0.0));
-        assertThat(features.getDouble(0, 3, 0, 0), equalTo(0.0));
-        assertThat(features.getDouble(0, 0, 0, 1), equalTo(0.0));	// g in example 1 position 2
-        assertThat(features.getDouble(0, 1, 0, 1), equalTo(0.0));
-        assertThat(features.getDouble(0, 2, 0, 1), equalTo(1.0));
-        assertThat(features.getDouble(0, 3, 0, 1), equalTo(0.0));
-        assertThat(features.getDouble(1, 0, 0, 0), equalTo(0.0));	// t in example 2 position 1
-        assertThat(features.getDouble(1, 1, 0, 0), equalTo(0.0));
-        assertThat(features.getDouble(1, 2, 0, 0), equalTo(0.0));
-        assertThat(features.getDouble(1, 3, 0, 0), equalTo(1.0));
-        assertThat(features.getDouble(1, 0, 0, 2), equalTo(1.0));	// a in example 2 position 3
-        assertThat(features.getDouble(1, 1, 0, 2), equalTo(0.0));
-        assertThat(features.getDouble(1, 2, 0, 2), equalTo(0.0));
-        assertThat(features.getDouble(1, 3, 0, 2), equalTo(0.0));
-        assertThat(outputs.getDouble(1, 0), equalTo(1.0));	// protein in example 2 is '*'
-        assertThat(outputs.getDouble(0, 15), equalTo(1.0)); // protein in example 1 is 'R'
+        try (ChannelDataSetReader reader = new ChannelDataSetReader(new File("data", "training.tbl"),
+                "protein", labels, channelMap)) {
+            assertThat(reader.getChannels(), equalTo(4));
+            DataSet set1 = reader.next();
+            INDArray features = set1.getFeatures();
+            INDArray outputs = set1.getLabels();
+            assertThat(set1.numExamples(), equalTo(8));
+            assertThat(features.getDouble(0, 0, 0, 0), equalTo(0.0));  // c in example 1 position 1
+            assertThat(features.getDouble(0, 1, 0, 0), equalTo(1.0));
+            assertThat(features.getDouble(0, 2, 0, 0), equalTo(0.0));
+            assertThat(features.getDouble(0, 3, 0, 0), equalTo(0.0));
+            assertThat(features.getDouble(0, 0, 0, 1), equalTo(0.0));	// g in example 1 position 2
+            assertThat(features.getDouble(0, 1, 0, 1), equalTo(0.0));
+            assertThat(features.getDouble(0, 2, 0, 1), equalTo(1.0));
+            assertThat(features.getDouble(0, 3, 0, 1), equalTo(0.0));
+            assertThat(features.getDouble(1, 0, 0, 0), equalTo(0.0));	// t in example 2 position 1
+            assertThat(features.getDouble(1, 1, 0, 0), equalTo(0.0));
+            assertThat(features.getDouble(1, 2, 0, 0), equalTo(0.0));
+            assertThat(features.getDouble(1, 3, 0, 0), equalTo(1.0));
+            assertThat(features.getDouble(1, 0, 0, 2), equalTo(1.0));	// a in example 2 position 3
+            assertThat(features.getDouble(1, 1, 0, 2), equalTo(0.0));
+            assertThat(features.getDouble(1, 2, 0, 2), equalTo(0.0));
+            assertThat(features.getDouble(1, 3, 0, 2), equalTo(0.0));
+            assertThat(outputs.getDouble(1, 0), equalTo(1.0));	// protein in example 2 is '*'
+            assertThat(outputs.getDouble(0, 15), equalTo(1.0)); // protein in example 1 is 'R'
+        }
     }
 
 }
