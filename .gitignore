@@ -2,3 +2,4 @@
 /.classpath
 /bin/
 /dependency-reduced-pom.xml
+/${env.SEED_JARS}/
