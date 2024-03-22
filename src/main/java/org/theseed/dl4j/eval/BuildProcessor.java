@@ -23,13 +23,13 @@ import org.kohsuke.args4j.Option;
 import org.theseed.basic.BaseProcessor;
 import org.theseed.basic.ParseFailureException;
 import org.theseed.counters.CountMap;
-import org.theseed.counters.Shuffler;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeDirectory;
 import org.theseed.io.MarkerFile;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.RoleMap;
+import org.theseed.stats.Shuffler;
 import org.theseed.subsystems.SubsystemRoleFactory;
 
 /**
