@@ -29,6 +29,29 @@ import org.theseed.basic.BaseProcessor;
  */
 public class App
 {
+
+    /** static array containing command names and comments */
+    protected static final String[] COMMANDS = new String[] {
+             "train", "train models to predict role frequencies",
+             "eval", "evaluate a directory of GTO files",
+             "p3eval", "evaluate a list of PATRIC genomes",
+             "gto", "evaluate a single GTO",
+             "compare", "produce an ORF-by-ORF comparison of genomes with their reference genomes",
+             "build", "build a genome consistency evaluator from the PATRIC CoreSEED dump",
+             "analyze", "analyze significant contributions among input features",
+             "p3All", "create a master directory of evaluation GTOs for PATRIC prokaryotes",
+             "comp", "produce completeness engine from master directory",
+             "mass", "produce a summary evaluation report on a group of genomes",
+             "updateMass", "update a summary evaluation report on a genome master directory",
+             "sort", "sort the summary evaluation report",
+             "rRoles", "create a report on the roles present or absent in a group of genomes",
+             "rTrain", "process a role-training file to generate presence/absence classifiers",
+             "rBuild", "generate role-training files from a representative-genome list file",
+             "p3save", "save a subsystem projector file from PATRIC",
+             "binEval", "evaluate binning results and optionally attempt to improve the bins",
+             "binReport", "produce a standalone binning summary report",
+    };
+
     public static void main( String[] args )
     {
         // Get the control parameter.
@@ -91,13 +114,20 @@ public class App
         case "updateMass" :
             processor = new UpdateMasterProcessor();
             break;
+        case "-h" :
+        case "--help" :
+            processor = null;
+            break;
         default :
             throw new RuntimeException("Invalid command " + command + ".");
         }
-        processor.setCommandString("dl4j.eval " + command);
-        boolean ok = processor.parseCommand(newArgs);
-        if (ok) {
-            processor.run();
+        if (processor == null)
+            BaseProcessor.showCommands(COMMANDS);
+        else {
+            boolean ok = processor.parseCommand(newArgs);
+            if (ok) {
+                processor.run();
+            }
         }
     }
 }
