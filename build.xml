@@ -5,7 +5,7 @@
     <!--define folder properties-->
     <property name="dir.buildfile" value="."/>
     <property name="dir.workspace" value="${dir.buildfile}/../.."/>
-    <property name="dir.jarfile" value="${dir.workspace}/git/kernel/jars"/>
+    <property name="dir.jarfile" value="${dir.workspace}/kernel/jars"/>
     <property environment="env" />
     <target name="create_run_jar">
         <jar destfile="${dir.jarfile}/dl4j.eval.jar" filesetmanifest="mergewithoutmain">
