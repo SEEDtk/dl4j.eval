@@ -28,7 +28,7 @@ import org.theseed.io.TabbedLineReader;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.Role;
 import org.theseed.proteins.RoleMap;
-import org.theseed.subsystems.SubsystemProjector;
+import org.theseed.subsystems.core.SubsystemRuleProjector;
 
 /**
  *
@@ -570,8 +570,9 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
      * @return TRUE if the genome was modified, else FALSE
      *
      * @throws IOException
+     * @throws ClassNotFoundException
      */
-    protected boolean improve(GenomeStats gReport, GenomeAnalysis analysis, File subFile) throws IOException {
+    protected boolean improve(GenomeStats gReport, GenomeAnalysis analysis, File subFile) throws IOException, ClassNotFoundException {
         boolean retVal = false;
         // Only bother to do this if the genome is contaminated.
         if (gReport.isClean())
@@ -596,9 +597,9 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
             if (! subsOK) {
                 // Here a subsystem has gone invalid.  Re-project the subsystems.
                 log.info("Subsystems must be regenerated after improvement.  Loading projector from {}.", subFile);
-                var projector = SubsystemProjector.load(subFile);
+                var projector = SubsystemRuleProjector.load(subFile);
                 log.info("Projecting subsystems onto {}.", genome);
-                projector.project(genome);
+                projector.project(genome, true);
                 log.info("{} subsystems in genome.", genome.getSubsystems().size());
             }
             retVal = (deletes > 0);

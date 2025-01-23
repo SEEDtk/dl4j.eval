@@ -22,7 +22,6 @@ import org.theseed.basic.BaseProcessor;
  * rRoles		create a report on the roles present or absent in a group of genomes
  * rTrain		process a role-training file to generate presence/absence classifiers
  * rBuild		generate role-training files from a representative-genome list file
- * p3save		save a subsystem projector file from PATRIC
  * binEval		evaluate binning results and optionally attempt to improve the bins
  * binReport	produce a standalone binning summary report
  *
@@ -47,7 +46,6 @@ public class App
              "rRoles", "create a report on the roles present or absent in a group of genomes",
              "rTrain", "process a role-training file to generate presence/absence classifiers",
              "rBuild", "generate role-training files from a representative-genome list file",
-             "p3save", "save a subsystem projector file from PATRIC",
              "binEval", "evaluate binning results and optionally attempt to improve the bins",
              "binReport", "produce a standalone binning summary report",
     };
@@ -101,9 +99,6 @@ public class App
             break;
         case "rBuild" :
             processor = new RoleBuildProcessor();
-            break;
-        case "p3save" :
-            processor = new P3SubsystemSaveProcessor();
             break;
         case "binEval" :
             processor = new BinEvalProcessor();
