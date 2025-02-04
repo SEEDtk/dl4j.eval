@@ -10,6 +10,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Test;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.DataSet;
@@ -33,6 +34,8 @@ class JackKnifeTest {
     void test() throws IOException, ParseFailureException {
         RoleTrainProcessor processor = new RoleTrainProcessor();
         File inDir = new File("data", "100226.15");
+        // Insure the missing-roles file is not leftover from a previous test.
+        FileUtils.forceDelete(new File(inDir, "missingRoles.tbl"));
         processor.setInDir(inDir);
         processor.setDefaults();
         processor.validateParms();
