@@ -35,7 +35,9 @@ class JackKnifeTest {
         RoleTrainProcessor processor = new RoleTrainProcessor();
         File inDir = new File("data", "100226.15");
         // Insure the missing-roles file is not leftover from a previous test.
-        FileUtils.forceDelete(new File(inDir, "missingRoles.tbl"));
+        File missingRolesFile = new File(inDir, "missingRoles.tbl");
+        if (missingRolesFile.exists())
+        	FileUtils.forceDelete(missingRolesFile);
         processor.setInDir(inDir);
         processor.setDefaults();
         processor.validateParms();
