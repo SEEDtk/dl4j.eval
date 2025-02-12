@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.theseed.basic.BaseProcessor;
 import org.theseed.basic.ParseFailureException;
 import org.theseed.genome.GenomeMultiDirectory;
+import org.theseed.p3api.KeyBuffer;
 import org.theseed.p3api.P3Connection;
 import org.theseed.p3api.P3Genome;
 
@@ -69,8 +70,8 @@ public class P3AllProcessor extends BaseProcessor {
         @Override
         public int compare(JsonObject o1, JsonObject o2) {
             int retVal = 0;
-            String k1 = P3Connection.getString(o1, "genome_id");
-            String k2 = P3Connection.getString(o2, "genome_id");
+            String k1 = KeyBuffer.getString(o1, "genome_id");
+            String k2 = KeyBuffer.getString(o2, "genome_id");
             boolean b1 = P3AllProcessor.this.gOutDir.contains(k1);
             boolean b2 = P3AllProcessor.this.gOutDir.contains(k2);
             if (b1 == b2)
@@ -115,8 +116,8 @@ public class P3AllProcessor extends BaseProcessor {
         int downloaded = 0;
         long start = System.currentTimeMillis();
         for (JsonObject gRequest : genomes) {
-            String genomeId = P3Connection.getString(gRequest, "genome_id");
-            String name = P3Connection.getString(gRequest, "genome_name");
+            String genomeId = KeyBuffer.getString(gRequest, "genome_id");
+            String name = KeyBuffer.getString(gRequest, "genome_name");
             processed++;
             if (this.gOutDir.contains(genomeId))
                 log.info("Skipping {}. {} ({}):  already in output directory.", processed, genomeId, name);
