@@ -273,6 +273,8 @@ public class CompareProcessor extends BaseProcessor {
      * @param f2	second genome feature, or NULL if the first genome feature is an orphan
      */
     private void tableRow(Feature f1, Feature f2) {
+        if (f1 == null && f2 == null)
+            throw new IllegalArgumentException("Cannot create table row with two null features.");
         ContainerTag cell1 = (f1 != null ? td(genome1.featureRegionLink(f1.getId())) : Html.emptyCell());
         ContainerTag cell2 = (f1 != null ? td(f1.getFunction()) : Html.emptyCell());
         ContainerTag cell3 = (f2 != null ? td(genome2.featureRegionLink(f2.getId())) : Html.emptyCell());
@@ -288,6 +290,7 @@ public class CompareProcessor extends BaseProcessor {
         // Compute the length difference.
         int len = (f2 != null ? f2.getProteinLength() : 0) - (f1 != null ? f1.getProteinLength() : 0);
         ContainerTag cell5 = Html.colorCell(len == 0, len);
+        @SuppressWarnings("null") // because we checked for both null above
         Location loc = (f1 != null ? f1.getLocation() : f2.getLocation());
         ContainerTag row = tr(td(loc.toString()), cell1, cell2, cell3, cell4, cell5);
         this.tableRows.add(row);
