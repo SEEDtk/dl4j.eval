@@ -268,7 +268,7 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
             gReport.countPeg(feat);
             // Loop through the useful roles.
             for (Role role : feat.getUsefulRoles(roleDefinitions)) {
-                if (role.getId().contentEquals("PhenTrnaSyntAlph") && feat.getProteinLength() > 0)
+                if (role.getId().contentEquals("PhenTrnaSyntAlph"))
                     gReport.countSeed(feat.getProteinTranslation());
                 roleCounts.count(role.getId());
             }
