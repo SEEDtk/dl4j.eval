@@ -114,13 +114,12 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
      * @throws IOException
      */
     @Override
-    protected final boolean validateParms() throws IOException, ParseFailureException {
+    protected final void validateParms() throws IOException, ParseFailureException {
         validateModelParms();
         validateOutputParms();
         // Validate the subclass parms.
         this.validateEvalParms();
         // Denote we can run.
-        return true;
     }
 
     /**

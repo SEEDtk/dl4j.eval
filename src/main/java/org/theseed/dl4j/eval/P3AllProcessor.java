@@ -91,7 +91,7 @@ public class P3AllProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Prepare the output directory.
         if (! this.outDir.isDirectory()) {
             this.gOutDir = GenomeMultiDirectory.create(this.outDir, false);
@@ -100,7 +100,6 @@ public class P3AllProcessor extends BaseProcessor {
         } else {
             this.gOutDir = new GenomeMultiDirectory(this.outDir);
         }
-        return true;
     }
 
     @Override

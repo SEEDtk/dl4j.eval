@@ -112,7 +112,7 @@ public class TrainProcessor extends BaseProcessor {
     }
 
     @Override
-    public boolean validateParms() throws IOException, ParseFailureException {
+    public void validateParms() throws IOException, ParseFailureException {
         if (! this.evalDir.isDirectory()) {
             throw new FileNotFoundException("Model directory " + this.evalDir + " not found or invalid.");
         } else {
@@ -176,7 +176,6 @@ public class TrainProcessor extends BaseProcessor {
                 this.output = new PrintStream(outStream, true);
             }
         }
-        return true;
     }
 
     @Override

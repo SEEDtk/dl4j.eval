@@ -94,7 +94,7 @@ public class CompareProcessor extends BaseProcessor {
     private File outDir;
 
     @Override
-    public boolean validateParms() throws IOException {
+    public void validateParms() throws IOException {
         if (! this.inDir.isDirectory()) {
             throw new FileNotFoundException("Input directory " + this.inDir + " is not found or invalid.");
         } else if (! this.refDir.isDirectory()) {
@@ -113,7 +113,6 @@ public class CompareProcessor extends BaseProcessor {
                 log.info("Output will be in {}.", this.outDir);
             }
         }
-        return true;
     }
 
     @Override

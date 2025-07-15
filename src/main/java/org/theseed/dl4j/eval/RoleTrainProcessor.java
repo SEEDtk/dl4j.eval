@@ -171,7 +171,7 @@ public class RoleTrainProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Validate the input directory.
         if (! this.inDir.isDirectory())
             throw new FileNotFoundException("Input directory " + this.inDir + " is not found or invalid.");
@@ -226,7 +226,6 @@ public class RoleTrainProcessor extends BaseProcessor {
             this.initOutput();
         else
             this.restartOutput();
-        return true;
     }
 
     /**

@@ -58,7 +58,7 @@ public class AnalyzeProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException {
+    protected void validateParms() throws IOException {
         // Insure we have all the files we need.
         if (! this.evalDir.isDirectory())
             throw new FileNotFoundException("Evaluator directory" + this.evalDir + " not found or invalid.");
@@ -68,7 +68,6 @@ public class AnalyzeProcessor extends BaseProcessor {
         this.roleDir = new File(this.evalDir, "Roles");
         if (! this.roleDir.isDirectory())
             throw new FileNotFoundException("Model directory " + this.roleDir + " not found or invalid.");
-        return true;
     }
 
     @Override

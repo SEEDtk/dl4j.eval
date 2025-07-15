@@ -121,7 +121,7 @@ public class EvalSortProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Verify the output directory.
         if (! this.outDir.isDirectory()) {
             log.info("Creating output directory {}.", this.outDir);
@@ -143,7 +143,6 @@ public class EvalSortProcessor extends BaseProcessor {
             log.info("Genome data will be read from {}.", this.inFile);
             this.inStream = new TabbedLineReader(this.inFile);
         }
-        return true;
     }
 
     @Override

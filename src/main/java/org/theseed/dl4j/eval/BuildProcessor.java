@@ -137,7 +137,7 @@ public class BuildProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Verify the coreSEED directory.
         if (! this.coreEvalDir.isDirectory())
             throw new FileNotFoundException(this.coreEvalDir + " is not found or is not a directory.");
@@ -189,7 +189,6 @@ public class BuildProcessor extends BaseProcessor {
             log.info("Creating Roles subdirectory {}.", roleDir);
             FileUtils.forceMkdir(roleDir);
         }
-        return true;
     }
 
     @Override

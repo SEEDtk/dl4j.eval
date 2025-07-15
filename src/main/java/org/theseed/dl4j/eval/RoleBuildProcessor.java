@@ -130,7 +130,7 @@ public class RoleBuildProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         // Insure the tuning parameters are reasonable.
         if (this.maxRoles < 1)
             throw new FileNotFoundException("Maximum number of role occurrences must be at least 1.");
@@ -171,7 +171,6 @@ public class RoleBuildProcessor extends BaseProcessor {
         File newRoleFile = new File(this.outDir, "roles.in.subsystems");
         FileUtils.copyFile(this.roleFile, newRoleFile);
         log.info("Role definitions copies to {}.", newRoleFile);
-        return true;
     }
 
     @Override

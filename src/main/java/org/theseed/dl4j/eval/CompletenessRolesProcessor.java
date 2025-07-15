@@ -142,7 +142,7 @@ public class CompletenessRolesProcessor extends BaseProcessor {
     }
 
     @Override
-    protected boolean validateParms() throws IOException, ParseFailureException {
+    protected void validateParms() throws IOException, ParseFailureException {
         if (this.inFile == null) {
             this.inStream = new TabbedLineReader(System.in);
             log.info("Reading from standard input.");
@@ -175,7 +175,6 @@ public class CompletenessRolesProcessor extends BaseProcessor {
             if (! repDbFile.canRead())
                 throw new FileNotFoundException("Representative-genome database file " + repDbFile + " not found or unreadable.");
         }
-        return true;
     }
 
     @Override
