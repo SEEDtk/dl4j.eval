@@ -30,9 +30,9 @@ import org.theseed.stats.GenomeEval;
  * commands.  The positional parameters are the output file prefix and the name of the output
  * directory.  The output directory will contain three files.
  *
- * 	XXXXXX.sort.tbl		which is the sorted output
- *  XXXXXX.good.tbl		which contains only the good genomes
- *  XXXXXX.stat.tbl		which contains counts related to the genomes
+ * 	XXXXXX.sort.tbl		        which is the sorted output
+ *  XXXXXX.prelim.good.tbl     	which contains only the good genomes
+ *  XXXXXX.stat.tbl		        which contains counts related to the genomes
  *
  * where XXXXXX is the output prefix.  The unsorted report should come in via the standard
  * input.  The command-line options are as follows.
@@ -165,7 +165,7 @@ public class EvalSortProcessor extends BaseProcessor {
             // output files.
             log.info("{} lines read.  Producing output.", lineSorter.size());
             File allFile = new File(this.outDir, this.prefix + ".sort.tbl");
-            File goodFile = new File(this.outDir, this.prefix + ".good.tbl");
+            File goodFile = new File(this.outDir, this.prefix + ".prelim.good.tbl");
             try (PrintWriter allWriter = new PrintWriter(allFile);
                     PrintWriter goodWriter = new PrintWriter(goodFile)) {
                 String header = StringUtils.join(GenomeEval.DEFAULT_HEADERS, '\t') + "\tfamily\tgenus\tspecies";
