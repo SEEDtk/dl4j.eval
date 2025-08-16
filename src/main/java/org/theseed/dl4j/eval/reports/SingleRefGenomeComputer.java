@@ -3,9 +3,12 @@
  */
 package org.theseed.dl4j.eval.reports;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
-import org.theseed.p3api.P3Connection;
+import org.theseed.p3api.P3CursorConnection;
 import org.theseed.p3api.P3Genome;
 
 /**
@@ -27,8 +30,12 @@ public class SingleRefGenomeComputer extends RefGenomeComputer {
      */
     public SingleRefGenomeComputer(String refGenomeId) {
         // Connect to PATRIC.
-        P3Connection p3 = new P3Connection();
-        this.refGenome = P3Genome.load(p3, refGenomeId, P3Genome.Details.PROTEINS);
+        P3CursorConnection p3 = new P3CursorConnection();
+        try {
+            this.refGenome = P3Genome.load(p3, refGenomeId, P3Genome.Details.PROTEINS);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     @Override

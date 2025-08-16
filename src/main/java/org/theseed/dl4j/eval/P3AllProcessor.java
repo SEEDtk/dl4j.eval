@@ -18,7 +18,7 @@ import org.theseed.basic.BaseProcessor;
 import org.theseed.basic.ParseFailureException;
 import org.theseed.genome.GenomeMultiDirectory;
 import org.theseed.p3api.KeyBuffer;
-import org.theseed.p3api.P3Connection;
+import org.theseed.p3api.P3CursorConnection;
 import org.theseed.p3api.P3Genome;
 
 import com.github.cliftonlabs.json_simple.JsonObject;
@@ -50,7 +50,7 @@ public class P3AllProcessor extends BaseProcessor {
     /** output directory controller */
     private GenomeMultiDirectory gOutDir;
     /** connection to PATRIC */
-    private P3Connection p3;
+    private P3CursorConnection p3;
 
     // COMMAND-LINE OPTIONS
 
@@ -105,7 +105,7 @@ public class P3AllProcessor extends BaseProcessor {
     @Override
     protected void runCommand() throws Exception {
         // Connect to PATRIC.
-        this.p3 = new P3Connection();
+        this.p3 = new P3CursorConnection();
         // Get a list of the public, prokaryotic genomes.
         SortedSet<JsonObject> genomes = new TreeSet<JsonObject>(this.new GenomeSorter());
         this.p3.addAllProkaryotes(genomes);

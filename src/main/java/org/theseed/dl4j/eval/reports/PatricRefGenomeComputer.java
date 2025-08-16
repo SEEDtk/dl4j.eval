@@ -6,13 +6,14 @@ package org.theseed.dl4j.eval.reports;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeMultiDirectory;
-import org.theseed.p3api.P3Connection;
+import org.theseed.p3api.P3CursorConnection;
 import org.theseed.p3api.P3Genome;
 import org.theseed.proteins.kmers.KmerCollectionGroup;
 import org.theseed.sequence.FastaInputStream;
@@ -34,7 +35,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
     /** buffer of reference genomes in memory */
     private Map<String, Genome> referenceBuffer;
     /** connection to PATRIC */
-    private P3Connection p3;
+    private P3CursorConnection p3;
     /** master directory for reference genomes */
     private GenomeMultiDirectory fileCache;
 
@@ -49,7 +50,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
     public PatricRefGenomeComputer(File modelDir) throws IOException {
         super();
         // Connect to PATRIC.
-        this.p3 = new P3Connection();
+        this.p3 = new P3CursorConnection();
         // Create the reference buffer.
         this.referenceBuffer = new HashMap<String, Genome>();
         // Read in the reference-genome database.  First, we hope to find a full RepDb.
@@ -142,8 +143,13 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
             retVal = this.fileCache.get(genomeId);
         // Here the genome is missing, which is an error, or we don't have a file cache.  Either
         // way, we can recover by downloading.
-        if (retVal == null)
-            retVal = P3Genome.load(p3, genomeId, P3Genome.Details.PROTEINS);
+        if (retVal == null) {
+            try {
+                retVal = P3Genome.load(p3, genomeId, P3Genome.Details.PROTEINS);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
         return retVal;
     }
 }
