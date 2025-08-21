@@ -42,7 +42,7 @@ public abstract class Evaluator extends BaseEvaluator implements IConsistencyChe
     // FIELDS
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(Evaluator.class);
+    private static final Logger log = LoggerFactory.getLogger(Evaluator.class);
     /** reporting object */
     private EvalReporter reporter;
     /** current output directory */

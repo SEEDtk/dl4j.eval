@@ -16,6 +16,8 @@ import org.theseed.basic.ParseFailureException;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.iterator.GenomeSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -53,6 +55,8 @@ import org.theseed.genome.iterator.GenomeSource;
 public class EvalProcessor extends Evaluator  {
 
     // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(EvalProcessor.class);
     /** genome source iterator */
     private GenomeSource genomeDir;
 

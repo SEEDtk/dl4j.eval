@@ -46,7 +46,7 @@ public class P3AllProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(P3AllProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(P3AllProcessor.class);
     /** output directory controller */
     private GenomeMultiDirectory gOutDir;
     /** connection to PATRIC */

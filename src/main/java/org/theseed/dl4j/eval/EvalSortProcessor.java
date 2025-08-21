@@ -52,7 +52,7 @@ public class EvalSortProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(EvalSortProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(EvalSortProcessor.class);
     /** input stream */
     private TabbedLineReader inStream;
     /** priority genome ID set */

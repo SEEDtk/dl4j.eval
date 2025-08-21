@@ -56,7 +56,7 @@ public abstract class BaseEvaluator extends BaseProcessor implements IConsistenc
     // FIELDS
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BaseEvaluator.class);
+    private static final Logger log = LoggerFactory.getLogger(BaseEvaluator.class);
     /** array of roles to use */
     protected List<String> roles;
     /** array of genome statistics objects */

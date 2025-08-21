@@ -9,6 +9,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.TaxItem;
@@ -25,8 +27,11 @@ import org.theseed.io.TabbedLineReader;
  */
 public class FileRefGenomeComputer extends RefGenomeComputer {
 
+    // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(FileRefGenomeComputer.class);
     /** map of taxon IDs to reference genomes */
-    private Map<Integer, Genome> refMap;
+    private final Map<Integer, Genome> refMap;
 
     /**
      * Create a file-based reference-genome engine.
@@ -36,7 +41,7 @@ public class FileRefGenomeComputer extends RefGenomeComputer {
      * @throws IOException
      */
     public FileRefGenomeComputer(File refGenomeFile) throws IOException {
-        this.refMap = new HashMap<Integer, Genome>();
+        this.refMap = new HashMap<>();
         log.info("Reading reference genomes from {}.", refGenomeFile);
         // Get the directory containing the reference genome file.  The file references are relative to this.
         File baseDir = refGenomeFile.getAbsoluteFile().getParentFile();

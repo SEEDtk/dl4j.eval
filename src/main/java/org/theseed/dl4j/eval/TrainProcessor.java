@@ -52,7 +52,7 @@ import org.theseed.io.TabbedLineReader;
 public class TrainProcessor extends BaseProcessor {
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(TrainProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(TrainProcessor.class);
 
     // FIELDS
 

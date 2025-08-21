@@ -31,6 +31,8 @@ import org.theseed.io.TabbedLineReader;
 import org.theseed.proteins.RoleMap;
 import org.theseed.stats.Shuffler;
 import org.theseed.subsystems.SubsystemRoleFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This command reads a PATRIC CoreSEED dump and builds training files.  The PATRIC CoreSEED dump consists
@@ -78,6 +80,8 @@ import org.theseed.subsystems.SubsystemRoleFactory;
 public class BuildProcessor extends BaseProcessor {
 
     // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(BuildProcessor.class);
     /** role counts per genome */
     private Map<String, CountMap<String>> genomeMap;
     /** ordered list of genome IDs */
@@ -194,9 +198,9 @@ public class BuildProcessor extends BaseProcessor {
     @Override
     public void runCommand() throws Exception {
         // Initialize the output maps.
-        this.badRoles = new HashSet<String>();
-        this.roleGenomeCounts = new CountMap<String>();
-        this.genomeMap = new HashMap<String, CountMap<String>>();
+        this.badRoles = new HashSet<>();
+        this.roleGenomeCounts = new CountMap<>();
+        this.genomeMap = new HashMap<>();
         // Compute the main role map.
         log.info("Processing subsystems.");
         this.subsystemRoles = SubsystemRoleFactory.processArchive(this.subFile, this.roleInitFile);
@@ -213,7 +217,7 @@ public class BuildProcessor extends BaseProcessor {
                 log.warn("Skipping genome {}-- not found in {}.", genomeID, this.annoDir);
             else try (TabbedLineReader annoReader = new TabbedLineReader(annoFile, 2)) {
                 // Accumulate the genome's role counts in here.
-                CountMap<String> gCounts = new CountMap<String>();
+                CountMap<String> gCounts = new CountMap<>();
                 // Loop through the file, counting roles.  Note that the feature ID does not matter.
                 for (TabbedLineReader.Line line : annoReader)
                     Feature.usefulRoles(this.subsystemRoles, line.get(1)).stream().forEach(x -> gCounts.count(x.getId()));
@@ -254,7 +258,7 @@ public class BuildProcessor extends BaseProcessor {
             // First we write the header.
             outStream.format("genome\t%s%n", roles);
             // Shuffle the genomes so we get a random distribution.
-            Shuffler<String> genomeList = new Shuffler<String>(this.genomeMap.keySet());
+            Shuffler<String> genomeList = new Shuffler<>(this.genomeMap.keySet());
             genomeList.shuffle(genomeList.size());
             log.info("Writing training.tbl.");
             // Now we write the genomes.
@@ -270,7 +274,7 @@ public class BuildProcessor extends BaseProcessor {
                 GenomeDirectory genomes = new GenomeDirectory(this.testDir);
                 for (Genome genome : genomes) {
                     log.info("Processing testing genome {}.", genome);
-                    CountMap<String> gCounts = new CountMap<String>();
+                    CountMap<String> gCounts = new CountMap<>();
                     for (Feature feat : genome.getPegs())
                         feat.getUsefulRoles(this.subsystemRoles).stream().forEach(x -> gCounts.count(x.getId()));
                     this.writeCounts(outStream, genome.getId(), gCounts);

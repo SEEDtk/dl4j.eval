@@ -70,7 +70,7 @@ public class RoleBuildProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(RoleBuildProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(RoleBuildProcessor.class);
     /** role definition map */
     private RoleMap roleMap;
     /** input stream to use */

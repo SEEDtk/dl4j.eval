@@ -51,7 +51,7 @@ public class RoleReportProcessor extends BaseReportProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(RoleReportProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(RoleReportProcessor.class);
     /** genome source to traverse */
     private GenomeSource genomes;
     /** role definitions */

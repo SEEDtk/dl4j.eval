@@ -66,7 +66,7 @@ public class CompareProcessor extends BaseProcessor {
     /** list of detail table rows */
     private List<DomContent> tableRows;
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(Evaluator.class);
+    private static final Logger log = LoggerFactory.getLogger(Evaluator.class);
     /** first genome for comparison */
     private Genome genome1;
     /** second genome for comparison */

@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.IOException;
 
 import org.kohsuke.args4j.Option;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.io.TabbedLineReader;
 import org.theseed.p3api.P3CursorConnection;
 import org.theseed.p3api.P3Genome;
@@ -36,7 +38,6 @@ import org.theseed.p3api.P3Genome;
  * --terse		do not write the individual output files, only the summary
  * --clear		clear the output directory before processing
  * --format		the format of the output reports
- * --ref		file of reference-genome mappings (the default is to use the representative genome)
  *
  * @author Bruce Parrello
  *
@@ -44,6 +45,8 @@ import org.theseed.p3api.P3Genome;
 public class P3EvalProcessor extends Evaluator {
 
     // FIELDS
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(P3EvalProcessor.class);
     /** stream for reading the input */
     private TabbedLineReader inStream;
     /** actual input column index */
@@ -64,10 +67,6 @@ public class P3EvalProcessor extends Evaluator {
     /** clear-output flag */
     @Option(name = "--clear", usage = "clear output directory before starting")
     private boolean clearOutputDir;
-
-    /** file of reference genome GTO mappings */
-    @Option(name = "--ref", usage = "file of taxon ID to reference-genome GTO mappings")
-    private File refGenomeFile;
 
     /** key column index */
     @Option(name = "-c", aliases = { "--col" }, metaVar = "genome_id", usage = "name or index (1-based) of the input genome ID column")
@@ -99,7 +98,6 @@ public class P3EvalProcessor extends Evaluator {
         this.inFile = null;
         this.batchSize = 200;
         this.outputDir = new File(System.getProperty("user.dir"));
-        this.refGenomeFile = null;
     }
 
     @Override

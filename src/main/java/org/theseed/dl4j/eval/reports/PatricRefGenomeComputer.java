@@ -10,6 +10,8 @@ import java.io.UncheckedIOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeMultiDirectory;
@@ -29,15 +31,16 @@ import org.theseed.sequence.Sequence;
 public class PatricRefGenomeComputer extends RefGenomeComputer {
 
     // FIELDS
-
+    /** logging facility */
+    private static final Logger log = LoggerFactory.getLogger(PatricRefGenomeComputer.class);
     /** kmer collection table for computing reference genomes */
     private KmerCollectionGroup referenceGenomes;
     /** buffer of reference genomes in memory */
-    private Map<String, Genome> referenceBuffer;
+    private final Map<String, Genome> referenceBuffer;
     /** connection to PATRIC */
-    private P3CursorConnection p3;
+    private final P3CursorConnection p3;
     /** master directory for reference genomes */
-    private GenomeMultiDirectory fileCache;
+    private final GenomeMultiDirectory fileCache;
 
     /**
      * Initialize the reference genome computer from the files in a specified
@@ -52,7 +55,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
         // Connect to PATRIC.
         this.p3 = new P3CursorConnection();
         // Create the reference buffer.
-        this.referenceBuffer = new HashMap<String, Genome>();
+        this.referenceBuffer = new HashMap<>();
         // Read in the reference-genome database.  First, we hope to find a full RepDb.
         File refGenomeDir = new File(modelDir, "RefDb");
         if (refGenomeDir.isDirectory()) {
@@ -76,7 +79,7 @@ public class PatricRefGenomeComputer extends RefGenomeComputer {
      *
      * @throws FileNotFoundException
      */
-    protected void readRefFasta(File refGenomeFile) throws FileNotFoundException {
+    protected final void readRefFasta(File refGenomeFile) throws FileNotFoundException {
         try (FastaInputStream refStream = new FastaInputStream(refGenomeFile)) {
             // Create the kmer database object.
             this.referenceGenomes = new KmerCollectionGroup();

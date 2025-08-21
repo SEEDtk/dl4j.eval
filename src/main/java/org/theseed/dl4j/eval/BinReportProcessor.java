@@ -54,7 +54,7 @@ public class BinReportProcessor extends BasePipeProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinReportProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(BinReportProcessor.class);
 
     // COMMAND-LINE OPTIONS
 

@@ -31,7 +31,7 @@ public class BinRefGenomeComputer extends RefGenomeComputer {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinRefGenomeComputer.class);
+    private static final Logger log = LoggerFactory.getLogger(BinRefGenomeComputer.class);
     /** binning sample directory */
     private File binDir;
     /** genome directory for reference genomes */

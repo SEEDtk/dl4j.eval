@@ -47,7 +47,7 @@ public class GenomeAnalysis {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(GenomeAnalysis.class);
+    private static final Logger log = LoggerFactory.getLogger(GenomeAnalysis.class);
     /** map of problematic roles to feature kmer databases */
     private Map<String, KmerCollectionGroup> featureFinder;
     /** reference genome ID */

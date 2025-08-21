@@ -7,8 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.dl4j.eval.stats.GenomeAnalysis;
 import org.theseed.dl4j.eval.stats.GenomeStats;
 import org.theseed.p3api.P3Genome;
@@ -24,8 +22,6 @@ import org.theseed.proteins.RoleMap;
 public abstract class EvalReporter implements AutoCloseable {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(EvalReporter.class);
     /** output directory */
     private File outDir;
     /** TRUE to output summary */
@@ -108,20 +104,11 @@ public abstract class EvalReporter implements AutoCloseable {
     public static EvalReporter create(Type type) {
         EvalReporter retVal;
         switch (type) {
-        case TEXT :
-            retVal = new EvalTextReporter();
-            break;
-        case HTML :
-            retVal = new EvalHtmlReporter();
-            break;
-        case DEEP :
-            retVal = new EvalDeepReporter();
-            break;
-        case COMPARE :
-            retVal = new EvalCompareReporter();
-            break;
-        default :
-            throw new RuntimeException("Unsupported output format.");
+        case TEXT -> retVal = new EvalTextReporter();
+        case HTML -> retVal = new EvalHtmlReporter();
+        case DEEP -> retVal = new EvalDeepReporter();
+        case COMPARE -> retVal = new EvalCompareReporter();
+        default -> throw new RuntimeException("Unsupported output format.");
         }
         return retVal;
     }

@@ -55,7 +55,7 @@ public class BinEvalProcessor extends BaseEvaluator {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(BinEvalProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(BinEvalProcessor.class);
     /** reporting facility */
     private EvalDeepReporter reporter;
     /** list of input genome files */

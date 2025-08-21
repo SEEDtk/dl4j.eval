@@ -29,7 +29,7 @@ public abstract class RefGenomeComputer {
     public static final double MAX_GENOME_DIST = 0.8;
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(EvalProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(EvalProcessor.class);
 
     /** master map of incoming genome IDs to reference genome objects */
     private Map<String, Genome>	master;

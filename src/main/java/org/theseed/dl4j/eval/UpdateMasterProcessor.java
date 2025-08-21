@@ -45,7 +45,7 @@ public class UpdateMasterProcessor extends BaseEvaluator {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(UpdateMasterProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(UpdateMasterProcessor.class);
     /** input stream for old evaluation master table */
     private TabbedLineReader reader;
     /** output stream for new evaluation master table */

@@ -39,7 +39,7 @@ public class AnalyzeProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(AnalyzeProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(AnalyzeProcessor.class);
     /** list of roles */
     private RoleInfluence[] roles;
     /** input role file */

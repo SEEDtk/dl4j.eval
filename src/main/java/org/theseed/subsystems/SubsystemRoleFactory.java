@@ -38,7 +38,7 @@ public class SubsystemRoleFactory {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(SubsystemRoleFactory.class);
+    private static final Logger log = LoggerFactory.getLogger(SubsystemRoleFactory.class);
     /** role table being built */
     private RoleMap roleTable;
     /** list of roles in the current subsystem */

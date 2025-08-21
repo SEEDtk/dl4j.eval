@@ -5,8 +5,6 @@ package org.theseed.proteins;
 
 import java.util.Collection;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.theseed.proteins.kmers.reps.RepGenome;
 import org.theseed.sequence.ProteinKmers;
 
@@ -22,14 +20,12 @@ import org.theseed.sequence.ProteinKmers;
 public class GroupSpec implements Comparable<GroupSpec> {
 
     // FIELDS
-    /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(GroupSpec.class);
     /** representative-genome object (NULL for the root group) */
-    private RepGenome repGenome;
+    private final RepGenome repGenome;
     /** minimum acceptable score */
-    private int score;
+    private final int score;
     /** role matrix */
-    private RoleMatrix roleMtx;
+    private final RoleMatrix roleMtx;
     /** special repGenome object for root group */
     public static final RepGenome ROOT_GENOME = new RepGenome("root", "prokaryotic organism group",
             "MQHLNELIEKAKLAIESIQDKSLTALDEIRVEYFGKKGHFTQLMQELRNVSAEERPAMGA"
@@ -87,10 +83,7 @@ public class GroupSpec implements Comparable<GroupSpec> {
         } else if (!this.repGenome.equals(other.repGenome)) {
             return false;
         }
-        if (this.score != other.score) {
-            return false;
-        }
-        return true;
+        return (this.score == other.score);
     }
 
     /**

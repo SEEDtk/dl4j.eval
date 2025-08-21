@@ -69,7 +69,7 @@ public class RoleTrainProcessor extends BaseProcessor {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(RoleTrainProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(RoleTrainProcessor.class);
     /** data input file name */
     private File dataFile;
     /** roles subdirectory */

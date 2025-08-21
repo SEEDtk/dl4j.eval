@@ -37,7 +37,7 @@ import org.theseed.io.TabbedLineReader;
 public class TestDecisionTrees {
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(TestDecisionTrees.class);
+    private static final Logger log = LoggerFactory.getLogger(TestDecisionTrees.class);
 
     public TestDecisionTrees() {
         String width = System.getenv("TESTPAR");

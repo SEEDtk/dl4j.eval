@@ -48,7 +48,7 @@ public class GtoEvalProcessor extends Evaluator implements ICommand {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(GtoEvalProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(GtoEvalProcessor.class);
     /** name of the subsystem projector file */
     private File improveFile;
 

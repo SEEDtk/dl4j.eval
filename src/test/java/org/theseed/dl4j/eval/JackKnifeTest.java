@@ -27,7 +27,7 @@ import org.theseed.io.TabbedLineReader;
 class JackKnifeTest {
 
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(JackKnifeTest.class);
+    private static final Logger log = LoggerFactory.getLogger(JackKnifeTest.class);
 
 
     @Test

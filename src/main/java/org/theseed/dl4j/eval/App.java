@@ -58,63 +58,25 @@ public class App
         BaseProcessor processor;
         // Parse the parameters.
         switch (command) {
-        case "analyze" :
-            processor = new AnalyzeProcessor();
-            break;
-        case "train" :
-            processor = new TrainProcessor();
-            break;
-        case "eval" :
-            processor = new EvalProcessor();
-            break;
-        case "p3eval" :
-            processor = new P3EvalProcessor();
-            break;
-        case "gto" :
-            processor = new GtoEvalProcessor();
-            break;
-        case "compare" :
-            processor = new CompareProcessor();
-            break;
-        case "build" :
-            processor = new BuildProcessor();
-            break;
-        case "p3All" :
-            processor = new P3AllProcessor();
-            break;
-        case "comp" :
-            processor = new CompletenessRolesProcessor();
-            break;
-        case "mass" :
-            processor = new MassEvalProcessor();
-            break;
-        case "sort" :
-            processor = new EvalSortProcessor();
-            break;
-        case "rTrain" :
-            processor = new RoleTrainProcessor();
-            break;
-        case "rRoles" :
-            processor = new RoleReportProcessor();
-            break;
-        case "rBuild" :
-            processor = new RoleBuildProcessor();
-            break;
-        case "binEval" :
-            processor = new BinEvalProcessor();
-            break;
-        case "binReport" :
-            processor = new BinReportProcessor();
-            break;
-        case "updateMass" :
-            processor = new UpdateMasterProcessor();
-            break;
-        case "-h" :
-        case "--help" :
-            processor = null;
-            break;
-        default :
-            throw new RuntimeException("Invalid command " + command + ".");
+        case "analyze" -> processor = new AnalyzeProcessor();
+        case "train" -> processor = new TrainProcessor();
+        case "eval" -> processor = new EvalProcessor();
+        case "p3eval" -> processor = new P3EvalProcessor();
+        case "gto" -> processor = new GtoEvalProcessor();
+        case "compare" -> processor = new CompareProcessor();
+        case "build" -> processor = new BuildProcessor();
+        case "p3All" -> processor = new P3AllProcessor();
+        case "comp" -> processor = new CompletenessRolesProcessor();
+        case "mass" -> processor = new MassEvalProcessor();
+        case "sort" -> processor = new EvalSortProcessor();
+        case "rTrain" -> processor = new RoleTrainProcessor();
+        case "rRoles" -> processor = new RoleReportProcessor();
+        case "rBuild" -> processor = new RoleBuildProcessor();
+        case "binEval" -> processor = new BinEvalProcessor();
+        case "binReport" -> processor = new BinReportProcessor();
+        case "updateMass" -> processor = new UpdateMasterProcessor();
+        case "-h", "--help" -> processor = null;
+        default -> throw new RuntimeException("Invalid command " + command + ".");
         }
         if (processor == null)
             BaseProcessor.showCommands(COMMANDS);

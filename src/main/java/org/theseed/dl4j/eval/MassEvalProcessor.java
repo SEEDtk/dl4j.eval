@@ -53,7 +53,7 @@ public class MassEvalProcessor extends BaseEvaluator {
 
     // FIELDS
     /** logging facility */
-    protected static Logger log = LoggerFactory.getLogger(MassEvalProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(MassEvalProcessor.class);
     /** input genome source */
     private GenomeSource master;
     /** output stream */
