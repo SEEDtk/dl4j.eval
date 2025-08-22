@@ -69,7 +69,7 @@ public class P3AllProcessor extends BaseProcessor {
 
         @Override
         public int compare(JsonObject o1, JsonObject o2) {
-            int retVal = 0;
+            int retVal;
             String k1 = KeyBuffer.getString(o1, "genome_id");
             String k2 = KeyBuffer.getString(o2, "genome_id");
             boolean b1 = P3AllProcessor.this.gOutDir.contains(k1);
@@ -107,7 +107,7 @@ public class P3AllProcessor extends BaseProcessor {
         // Connect to PATRIC.
         this.p3 = new P3CursorConnection();
         // Get a list of the public, prokaryotic genomes.
-        SortedSet<JsonObject> genomes = new TreeSet<JsonObject>(this.new GenomeSorter());
+        SortedSet<JsonObject> genomes = new TreeSet<>(this.new GenomeSorter());
         this.p3.addAllProkaryotes(genomes);
         log.info("{} genomes found in PATRIC.  {} already in output directory.", genomes.size(), this.gOutDir.size());
         // Loop through the genomes, removing the ones already processed.

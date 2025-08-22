@@ -153,7 +153,7 @@ public class EvalSortProcessor extends BaseProcessor {
             // Load the taxonomy map.
             this.taxMap = new P3TaxData(new P3Connection());
             // We will accumulate the input lines in here in order to sort them.
-            SortedSet<TabbedLineReader.Line> lineSorter = new TreeSet<TabbedLineReader.Line>(this.new LineSorter());
+            SortedSet<TabbedLineReader.Line> lineSorter = new TreeSet<>(this.new LineSorter());
             // Loop through the input file.
             log.info("Scanning input file.");
             for (TabbedLineReader.Line line : this.inStream) {
