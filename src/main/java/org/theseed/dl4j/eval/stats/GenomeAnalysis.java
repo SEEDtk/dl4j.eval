@@ -63,7 +63,7 @@ public class GenomeAnalysis {
     /** number of subsystem-locked contigs */
     private int subContigs;
     /** list of bad contigs */
-    private Set<Contig> badContigs;
+    private final Set<Contig> badContigs;
     /** maximum distance between close features */
     private final double maxDist;
     /** genome quality report */
@@ -82,15 +82,15 @@ public class GenomeAnalysis {
     public class FeatureAnalysis {
 
         /** associated feature */
-        private Feature feat;
+        private final Feature feat;
         /** status (good, bad, unknown) */
-        private FeatureStatus status;
+        private final FeatureStatus status;
         /** ID of the closest reference feature (if any) */
-        private String refId;
+        private final String refId;
         /** TRUE if it starts near the edge of the contig */
-        private boolean startsEdge;
+        private final boolean startsEdge;
         /** TRUE if it ends near the edge of the contig */
-        private boolean endsEdge;
+        private final boolean endsEdge;
 
         /**
          * Construct a default-status feature analysis object.
@@ -185,7 +185,7 @@ public class GenomeAnalysis {
             this.refGenomeId = refGenome.getId();
             // Create the problematic role directory.
             Set<String> targetRoles = gReport.getProblematicRoles();
-            this.featureFinder = new HashMap<String, KmerCollectionGroup>(targetRoles.size() * 3 / 2 + 1);
+            this.featureFinder = new HashMap<>(targetRoles.size() * 3 / 2 + 1);
             targetRoles.stream().forEach(x -> this.featureFinder.put(x, new KmerCollectionGroup()));
             // Loop through the features, putting them in the directory.  Note we only save the
             // features with problematic roles that have valid protein translations.  If our reference
@@ -206,7 +206,7 @@ public class GenomeAnalysis {
         // Now we create the feature map, which maps feature IDs to feature analysis objects.  We only
         // keep a feature if it has a problematic role.  Note that we mark the SSU rRNA as a good feature.
         // Good and bad features are counted in the contigs.
-        this.featureMap = new HashMap<String, FeatureAnalysis>(sourceGenome.getFeatureCount() * 3 / 2 + 1);
+        this.featureMap = new HashMap<>(sourceGenome.getFeatureCount() * 3 / 2 + 1);
         for (Feature feat : sourceGenome.getFeatures()) {
             // Get the contig analysis.
             ContigAnalysis contig = this.contigMap.get(feat.getLocation().getContigId());
@@ -214,16 +214,15 @@ public class GenomeAnalysis {
             String fid = feat.getId();
             String type = feat.getType();
             switch (type) {
-            case "rna" :
+            case "rna" -> {
                 // Here we have an RNA.  If it is an SSU rRNA or is subsystem-locked, record it in the contig
                 // as a good feature.
                 if (Genome.isSSURole(feat))
                     contig.countFeature(feat,  FeatureStatus.GOOD);
                 else if (feat.isSubsystemLocked())
                     contig.countSubLock();
-                break;
-            case "CDS" :
-            case "peg" :
+                }
+            case "CDS", "peg" -> {
                 // Here we have a protein.  We need to find if it has a problematic role.  Note that if
                 // it does, the checkProblematicRoles method adds it to the PPR list for the role.
                 Collection<Role> roles = feat.getUsefulRoles(this.roleMap);
@@ -256,16 +255,17 @@ public class GenomeAnalysis {
                     contig.countSubLock();
                 else
                     contig.countFeature(feat, status);
-                break;
-            default :
+                }
+            default -> {
                 // All other features, check for subsystem lock.
                 if (feat.isSubsystemLocked())
                     contig.countSubLock();
+                }
             }
         }
         // With all the features processed, we now have counts for all the contigs.  Process them here.
         // A contig is bad if it has no good or subsystem-locked features.
-        this.badContigs = new TreeSet<Contig>();
+        this.badContigs = new TreeSet<>();
         this.goodContigs = 0;
         this.subContigs = 0;
         for (ContigAnalysis contig : this.contigMap.values()) {

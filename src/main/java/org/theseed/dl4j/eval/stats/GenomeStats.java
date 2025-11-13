@@ -40,7 +40,7 @@ public class GenomeStats extends GenomeEval {
 
     // FIELDS
     /** source genome */
-    private Genome genome;
+    private final Genome genome;
     /** completeness group */
     private String group;
     /** number of extra role occurrences for completeness */
@@ -62,9 +62,9 @@ public class GenomeStats extends GenomeEval {
     /** number of features with local protein families */
     private int plfamCount;
     /** map of problematic roles */
-    private SortedMap<String, ProblematicRole> problematicRoles;
+    private final SortedMap<String, ProblematicRole> problematicRoles;
     /** set of useful roles */
-    private Set<String> usefulRoles;
+    private final Set<String> usefulRoles;
     /** total contig length */
     private int dnaSize;
     /** number of contigs */
@@ -91,13 +91,13 @@ public class GenomeStats extends GenomeEval {
      */
     public class ProblematicRole {
         /** TRUE if this role is problematic because of completeness */
-        private boolean universal;
+        private final boolean universal;
         /** number of predicted occurrences */
-        private int predicted;
+        private final int predicted;
         /** number of actual occurrences */
-        private int actual;
+        private final int actual;
         /** list of features containing this role */
-        private List<Feature> features;
+        private final List<Feature> features;
 
         /**
          * Construct a problematic role record.
@@ -110,7 +110,7 @@ public class GenomeStats extends GenomeEval {
             this.universal = universal;
             this.predicted = predicted;
             this.actual = actual;
-            this.features = new ArrayList<Feature>(5);
+            this.features = new ArrayList<>(5);
         }
 
         /**
@@ -247,8 +247,8 @@ public class GenomeStats extends GenomeEval {
         this.pegCount = 0;
         this.hypoCount = 0;
         this.plfamCount = 0;
-        this.problematicRoles = new TreeMap<String, ProblematicRole>();
-        this.usefulRoles = new HashSet<String>(2500);
+        this.problematicRoles = new TreeMap<>();
+        this.usefulRoles = new HashSet<>(2500);
         this.seedCount = 0;
         this.seedProt = "";
         this.l50 = 0;
@@ -666,13 +666,13 @@ public class GenomeStats extends GenomeEval {
             else
                 under++;
         }
-        JsonObject problematicRoles = new JsonObject().putChain("consistency_roles", pprConsistent)
+        JsonObject problematicRoleJson = new JsonObject().putChain("consistency_roles", pprConsistent)
                 .putChain("completeness_roles", pprComplete).putChain("role_map", roleMap);
-        problematicRoles.put("consistency_checked", this.consistentCount);
-        problematicRoles.put("completeness_checked", this.completeCount);
-        problematicRoles.put("over_present", over);
-        problematicRoles.put("under_present", under);
-        quality.put("problematic_roles_report", problematicRoles);
+        problematicRoleJson.put("consistency_checked", this.consistentCount);
+        problematicRoleJson.put("completeness_checked", this.completeCount);
+        problematicRoleJson.put("over_present", over);
+        problematicRoleJson.put("under_present", under);
+        quality.put("problematic_roles_report", problematicRoleJson);
         if (genome.hasContigs()) {
             MD5Hex md5Engine = new MD5Hex();
             quality.put("dna_md5", md5Engine.sequenceMD5(genome));
@@ -821,11 +821,11 @@ public class GenomeStats extends GenomeEval {
      */
     public String formatStandardOutputLine(boolean haveCompleteness) {
         // Get the taxonomic lineage.
-        Genome genome = this.getGenome();
-        String taxIds = Arrays.stream(genome.getLineage()).mapToObj(n -> Integer.toString(n))
+        Genome myGenome = this.getGenome();
+        String taxIds = Arrays.stream(myGenome.getLineage()).mapToObj(n -> Integer.toString(n))
                 .collect(Collectors.joining("::"));
         // Build the output line.
-        List<String> output = new ArrayList<String>(GenomeEval.DEFAULT_HEADERS.length);
+        List<String> output = new ArrayList<>(GenomeEval.DEFAULT_HEADERS.length);
         output.add(this.getId());
         output.add(this.getName());
         output.add(String.format("%8.2f", this.getScore()));
