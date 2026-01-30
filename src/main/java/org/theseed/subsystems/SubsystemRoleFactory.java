@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -16,6 +17,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.theseed.genome.Feature;
@@ -40,7 +42,7 @@ public class SubsystemRoleFactory {
     /** logging facility */
     private static final Logger log = LoggerFactory.getLogger(SubsystemRoleFactory.class);
     /** role table being built */
-    private RoleMap roleTable;
+    private final RoleMap roleTable;
     /** list of roles in the current subsystem */
     List<String> currRoles;
     /** TRUE if this subsystem is public (good) */
@@ -112,7 +114,7 @@ public class SubsystemRoleFactory {
             GzipCompressorInputStream gzIn = new GzipCompressorInputStream(fileStream);
             TarArchiveInputStream tarIn = new TarArchiveInputStream(gzIn);
             // Allocate the role string list.
-            this.currRoles = new ArrayList<String>(50);
+            this.currRoles = new ArrayList<>(50);
             // Now we loop through the archive entries.  A key point here is that every entry name is fully-qualified
             // and begins with "Subsystems/".  We use this information to insure we don't recurse into subdirectories.
             TarArchiveEntry curr = tarIn.getNextTarEntry();
@@ -120,7 +122,7 @@ public class SubsystemRoleFactory {
                 if (curr.isDirectory()) {
                     // Insure this is really a subsystem.
                     String name = StringUtils.substring(curr.getName(), 11, -1);
-                    if (! StringUtils.contains(name, "/")) {
+                    if (! Strings.CS.contains(name, "/")) {
                         // Here we have a new subsystem.  Check the old one.
                         this.closeSubsystem();
                         // Initialize the new one.
@@ -130,16 +132,10 @@ public class SubsystemRoleFactory {
                     // Here we have a subsystem file.  Check the name.
                     String name = StringUtils.substring(curr.getName(), 12 + this.currName.length());
                     switch (name) {
-                    case "CLASSIFICATION" :
-                        this.checkExperimental(tarIn);
-                        break;
-                    case "EXCHANGEABLE" :
-                    case "EXCHANGABLE"  :
-                        // Here the subsystem is public.  Set the public bit.
+                    case "CLASSIFICATION" -> this.checkExperimental(tarIn);
+                    case "EXCHANGEABLE", "EXCHANGABLE" -> // Here the subsystem is public.  Set the public bit.
                         this.currPublic = true;
-                        break;
-                    case "spreadsheet" :
-                        // Here we must read the roles.
+                    case "spreadsheet" -> // Here we must read the roles.
                         this.readRoles(tarIn);
                     }
                 }
@@ -162,7 +158,7 @@ public class SubsystemRoleFactory {
      */
     private void checkExperimental(TarArchiveInputStream tarIn) throws IOException {
         List<String> lines = IOUtils.readLines(tarIn, Charset.defaultCharset());
-        if (lines.size() > 0 && StringUtils.containsIgnoreCase(lines.get(0), "experimental"))
+        if (! lines.isEmpty() && Strings.CI.contains(lines.get(0), "experimental"))
             this.currExperimental = true;
     }
 
@@ -177,14 +173,13 @@ public class SubsystemRoleFactory {
      */
     private void readRoles(TarArchiveInputStream tarIn) throws IOException {
         List<String> lines = IOUtils.readLines(tarIn, Charset.defaultCharset());
-        if (lines.size() > 0) {
+        if (! lines.isEmpty()) {
             Iterator<String> iter = lines.iterator();
             String line = iter.next();
             while (! line.contentEquals("//")) {
                 String roleInfo = StringUtils.substringAfter(line, "\t");
                 String[] parts = Feature.rolesOfFunction(roleInfo);
-                for (String part : parts)
-                    this.currRoles.add(part);
+                this.currRoles.addAll(Arrays.asList(parts));
                 if (iter.hasNext())
                     line = iter.next();
                 else

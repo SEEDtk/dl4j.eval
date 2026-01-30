@@ -18,7 +18,7 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.kohsuke.args4j.Argument;
 import org.kohsuke.args4j.Option;
 import org.slf4j.Logger;
@@ -28,15 +28,22 @@ import org.theseed.genome.Contig;
 import org.theseed.genome.Feature;
 import org.theseed.genome.Genome;
 import org.theseed.genome.GenomeDirectory;
-import org.theseed.genome.compare.CompareORFs;
 import org.theseed.genome.compare.CompareFeatures;
+import org.theseed.genome.compare.CompareORFs;
 import org.theseed.locations.Location;
 import org.theseed.reports.Html;
 import org.theseed.sequence.MD5Hex;
 
+import static j2html.TagCreator.a;
+import static j2html.TagCreator.h1;
+import static j2html.TagCreator.join;
+import static j2html.TagCreator.li;
+import static j2html.TagCreator.td;
+import static j2html.TagCreator.th;
+import static j2html.TagCreator.tr;
+import static j2html.TagCreator.ul;
 import j2html.tags.ContainerTag;
 import j2html.tags.DomContent;
-import static j2html.TagCreator.*;
 
 /**
  * This class produces a web site showing an ORF-by-ORF comparison of genomes with identical contigs.
@@ -127,7 +134,7 @@ public class CompareProcessor extends BaseProcessor {
         this.comparator = new CompareFeatures();
         this.md5Computer = new MD5Hex();
         // Initialize the summary row table.  Note the header is given a low score to sort it to the top.
-        this.summaryData = new TreeMap<Double, Collection<DomContent>>();
+        this.summaryData = new TreeMap<>();
         this.summaryData.put(-1.0, Collections.singleton(tr(th("Match Score").withClass("num"), th("Genome 1 ID"), th("Genome 1 Name"), th("Genome 2 ID"), th("Genome 2 Name"))));
         // Get all the reference genomes.  We would like to hold them in memory, but it is too much.
         // Instead, we map the genome MD5 to its file name.
@@ -154,7 +161,7 @@ public class CompareProcessor extends BaseProcessor {
             }
         }
         log.info("Writing summary page.");
-        Collection<DomContent> summaryRows = new ArrayList<DomContent>(genomesIn.size());
+        Collection<DomContent> summaryRows = new ArrayList<>(genomesIn.size());
         for (Collection<DomContent> summaryEntry : summaryData.values())
             summaryRows.addAll(summaryEntry);
         String page = Html.page("Summary of ORF Comparisons", Html.formatTable("Genome Comparisons", summaryRows));
@@ -170,7 +177,7 @@ public class CompareProcessor extends BaseProcessor {
      */
     private void mapContigs() throws UnsupportedEncodingException {
         // Build a map of MD5s to IDs for each contig in the target genome.
-        Map<String,String> md5Map = new HashMap<String, String>(this.genome2.getContigCount());
+        Map<String,String> md5Map = new HashMap<>(this.genome2.getContigCount());
         for (Contig contig2 : genome2.getContigs()) {
             String contigKey = this.md5Computer.sequenceMD5(contig2.getSequence());
             md5Map.put(contigKey, contig2.getId());
@@ -192,7 +199,7 @@ public class CompareProcessor extends BaseProcessor {
      */
     private void compareReport() throws IOException {
         // Start the table.
-        this.tableRows = new ArrayList<DomContent>(3000);
+        this.tableRows = new ArrayList<>(3000);
         this.tableRows.add(tr(th("Location"), th("Peg 1"), th("Function 1"), th("Peg 2"), th("Function 2"), th("Diff").withClass("num")));
         // Get both sets of features in ORF order.
         log.info("Sorting genome features into ORFs for {} and {}.", genome1.getId(), genome2.getId());
@@ -282,7 +289,7 @@ public class CompareProcessor extends BaseProcessor {
             cell4 = cell4.withStyle(Html.BAD_STYLE);
         } else if (f2 == null) {
             cell2 = cell2.withStyle(Html.BAD_STYLE);
-        } else if (! StringUtils.equalsIgnoreCase(f1.getFunction(), f2.getFunction())) {
+        } else if (! Strings.CI.equals(f1.getFunction(), f2.getFunction())) {
             cell2 = cell2.withStyle(Html.BAD_STYLE);
             cell4 = cell4.withStyle(Html.BAD_STYLE);
         }
