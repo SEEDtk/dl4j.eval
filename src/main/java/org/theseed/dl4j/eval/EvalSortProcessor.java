@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.theseed.basic.BaseProcessor;
 import org.theseed.basic.ParseFailureException;
 import org.theseed.io.TabbedLineReader;
-import org.theseed.p3api.P3Connection;
+import org.theseed.p3api.P3CursorConnection;
 import org.theseed.p3api.P3TaxData;
 import org.theseed.stats.GenomeEval;
 
@@ -151,7 +151,7 @@ public class EvalSortProcessor extends BaseProcessor {
             // Create the evaluator.
             this.stats = new GenomeEval();
             // Load the taxonomy map.
-            this.taxMap = new P3TaxData(new P3Connection());
+            this.taxMap = new P3TaxData(new P3CursorConnection());
             // We will accumulate the input lines in here in order to sort them.
             SortedSet<TabbedLineReader.Line> lineSorter = new TreeSet<>(this.new LineSorter());
             // Loop through the input file.
