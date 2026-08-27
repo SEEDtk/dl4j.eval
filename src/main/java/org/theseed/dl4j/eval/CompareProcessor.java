@@ -146,7 +146,7 @@ public class CompareProcessor extends BaseProcessor {
         for (Genome genome : genomesIn) {
             log.info("Processing genome {}.", genome);
             // Search for a match.
-            String key = this.md5Computer.sequenceMD5(genome);
+            String key = this.md5Computer.contigMD5(genome);
             File refGenomeFile = this.refGenomes.get(key);
             if (refGenomeFile == null) {
                 log.warn("No match found for {}", genome);
@@ -179,12 +179,12 @@ public class CompareProcessor extends BaseProcessor {
         // Build a map of MD5s to IDs for each contig in the target genome.
         Map<String,String> md5Map = new HashMap<>(this.genome2.getContigCount());
         for (Contig contig2 : genome2.getContigs()) {
-            String contigKey = this.md5Computer.sequenceMD5(contig2.getSequence());
+            String contigKey = this.md5Computer.contigMD5(contig2.getSequence());
             md5Map.put(contigKey, contig2.getId());
         }
         // Now map each contig ID in the reference genome to the appropriate target genome contig ID.
         for (Contig contig1 : genome1.getContigs()) {
-            String contigKey = this.md5Computer.sequenceMD5(contig1.getSequence());
+            String contigKey = this.md5Computer.contigMD5(contig1.getSequence());
             String contig2Id = md5Map.get(contigKey);
             // The two genomes are DNA-identical, so there should always be a matching contig ID.
             assert(contig2Id != null);

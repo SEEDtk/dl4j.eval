@@ -675,7 +675,7 @@ public class GenomeStats extends GenomeEval {
         quality.put("problematic_roles_report", problematicRoleJson);
         if (genome.hasContigs()) {
             MD5Hex md5Engine = new MD5Hex();
-            quality.put("dna_md5", md5Engine.sequenceMD5(genome));
+            quality.put("dna_md5", md5Engine.contigMD5(genome));
         }
     }
 
